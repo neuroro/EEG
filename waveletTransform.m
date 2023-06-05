@@ -194,9 +194,9 @@ end
 % a 2nd peak that is half of the main peak (Smith, 2022)
 %
 % Tallon-Baudry, Bertrand, Delpuech, & Permier (1997) argue that f/fSigma
-% shoud be approximately 5 or greater (citing Grosmann et al., 1989), where
-% fSigma = 1/(2*pi*sigma) is the Gaussian frequency shape and sigma is the 
-% width of the Gaussian
+% should be approximately 5 or greater (citing Grosmann et al., 1989),
+% where fSigma = 1 / ( 2*pi*sigma ) is the Gaussian frequency shape and
+% sigma is the width of the Gaussian
 % If sigma = n / ( 2*pi*f ) then f/fSigma = n, ergo n should be >= 5
 % 
 % n = pi * sqrt( 2/log(2) ) cycles corresponds to a wavelet full width at
