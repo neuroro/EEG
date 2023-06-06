@@ -21,7 +21,13 @@ eegTimeFrequency( setName, frequencyLimits, frequencyResolution, blending )
 % Edit the configuration of the EEG data in the code
 % Set the Current Folder to the location of the datasets or the base folder
 %
+% Function:
 % >> eegTimeFrequency( setName, frequencyLimits, frequencyResolution, blending )
+%
+% Examples:
+% >> eegTimeFrequency( 'Memory' )
+% >> eegTimeFrequency( 'Memory', [ 2 30 ], 30, 'sigmoid' )
+% >> eegTimeFrequency( 'Memory', [], 0, 'median' )
 %
 % Inputs:
 %   setName:             Part of the file name that is common to all the 
@@ -44,11 +50,6 @@ eegTimeFrequency( setName, frequencyLimits, frequencyResolution, blending )
 %   on the stimulus and data centred on the response for each participant
 %   and each condition, from which a localised decomposition can then be
 %   extracted using eegLocalSpectra.m
-%
-% Examples:
-% >> eegTimeFrequency( 'Memory' )
-% >> eegTimeFrequency( 'Memory', [], [], 'median' )
-% >> eegTimeFrequency( 'Memory', [ 2 30 ], 30, 'sigmoid' )
 %
 % • Requires •
 % -------------------------------------------------------------------------
@@ -100,6 +101,7 @@ participantCode  = 'P';
 %                      'standardKnown' 'standardUnfamiliar' };
 conditions       = { 'AccH' 'AccM' 'AccL' ...
                      'ShaH' 'ShaM' 'ShaL' };
+conditions       = 'STI5';
 
 % Order in the trial of the response event relative to the stimulus event,
 % which is assumed to be 1st
@@ -141,13 +143,13 @@ if nargin < 4
     blending     = 'sigmoid';
 end
 
-% % Channels of interest (indices in the EEG data)
-% frontalChannels  = [ 5 6 11 12 ];  % [ 5  6  7  106 11 12 118 20 19 4  13 112 ];
-% parietalChannels = [ ];            % [ 31 80 55 54  79 62 37  87 86 53 60 85  ];
+% Channels of interest (indices in the EEG data)
+frontalChannels  = [ 5 6 11 12 ];  % [ 5  6  7  106 11 12 118 20 19 4  13 112 ];
+parietalChannels = [ ];            % [ 31 80 55 54  79 62 37  87 86 53 60 85  ];
 
-% Channels of interest
-frontalChannels  = { 'Fz' 'F1' 'F2' 'F3' 'F4' 'FCz' 'FC1' 'FC2' 'FC3' 'FC4' }; 
-parietalChannels = { 'Pz' 'P1' 'P2' 'P3' 'P4' 'POz' 'PO1' 'PO2' 'PO3' 'PO4' }; 
+% % Channels of interest
+% frontalChannels  = { 'Fz' 'F1' 'F2' 'F3' 'F4' 'FCz' 'FC1' 'FC2' 'FC3' 'FC4' }; 
+% parietalChannels = { 'Pz' 'P1' 'P2' 'P3' 'P4' 'POz' 'PO1' 'PO2' 'PO3' 'PO4' }; 
 
 
 %% Derived parameters
@@ -585,6 +587,11 @@ for n = 1:nFiles
                Decomposition.(trialCentre).Coefficients(1:skipCount,:,:,:)   = NaN*1i;
     
             end
+        end
+
+        % Store channel co-ordinates
+        for centre = 1:nTrialCentres
+            Decomposition.(trialCentres{centre}).ChannelCoordinates = EEG.chanlocs;
         end
 
 
