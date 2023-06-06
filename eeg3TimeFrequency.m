@@ -599,6 +599,11 @@ for n = 1:nFiles
             end
         end
 
+        % Store channel co-ordinates
+        for centre = 1:nTrialCentres
+            Decomposition.(trialCentres{centre}).ChannelCoordinates = EEG.chanlocs;
+        end
+
 
         %% Power, phase coherence, and median blending
         % -----------------------------------------------------------------

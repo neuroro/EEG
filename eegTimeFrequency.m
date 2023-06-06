@@ -96,12 +96,17 @@ disp( ' ' )
 participantCode  = 'P';
 
 % Stimulus event labels for each condition
-% conditions       = { 'STI5' 'STI7' 'STI9' };
+conditions       = { 'STI5' 'STI7' 'STI9' };
+
+%% Altruism task
+% conditions       = { 'AccH' 'AccM' 'AccL' ...
+%                      'ShaH' 'ShaM' 'ShaL' };
+
+%% SRECOG task
 % conditions       = { 'famousKnown'   'famousUnfamiliar'   ...
 %                      'standardKnown' 'standardUnfamiliar' };
-conditions       = { 'AccH' 'AccM' 'AccL' ...
-                     'ShaH' 'ShaM' 'ShaL' };
-conditions       = 'STI5';
+
+%%
 
 % Order in the trial of the response event relative to the stimulus event,
 % which is assumed to be 1st
@@ -110,11 +115,15 @@ responseEvent    = 2; % 2nd after stimulus
 % Non-events, such as fixation, which should not be windowed around
 nonEvents        = { 'Fixation' 'fixation' 'FXTN' ...
                      'Empty'    'empty'           };
+
+%% SRECOG task
 % fixationEvents   = { 'Fixation' 'fixation' 'FXTN' };
 % for n = 0:9
 %     numberCharacters{n+1} = num2str(n);
 % end
 % nonEvents        = [ fixationEvents numberCharacters ];
+
+%%
 
 % Time parameters
 samplingRate     = 1000;
@@ -125,7 +134,7 @@ maxTrialWindow   = 2000;
 
 % Frequency parameters
 if nargin < 2 || isempty( frequencyLimits )
-    frequencyLimits = [ 2 60 ]; % Minium and maximum frequency
+    frequencyLimits = [ 2 30 ]; % Minium and maximum frequency
 end
 if nargin < 3 || isempty( frequencyResolution ) || ~frequencyResolution
     frequencyResolution = 30;   % Frequencies per octave
@@ -143,13 +152,13 @@ if nargin < 4
     blending     = 'sigmoid';
 end
 
-% Channels of interest (indices in the EEG data)
-frontalChannels  = [ 5 6 11 12 ];  % [ 5  6  7  106 11 12 118 20 19 4  13 112 ];
-parietalChannels = [ ];            % [ 31 80 55 54  79 62 37  87 86 53 60 85  ];
+% % Channels of interest (indices in the EEG data)
+% frontalChannels  = [ 5 6 11 12 ];  % [ 5  6  7  106 11 12 118 20 19 4  13 112 ];
+% parietalChannels = [ ];            % [ 31 80 55 54  79 62 37  87 86 53 60 85  ];
 
-% % Channels of interest
-% frontalChannels  = { 'Fz' 'F1' 'F2' 'F3' 'F4' 'FCz' 'FC1' 'FC2' 'FC3' 'FC4' }; 
-% parietalChannels = { 'Pz' 'P1' 'P2' 'P3' 'P4' 'POz' 'PO1' 'PO2' 'PO3' 'PO4' }; 
+% Channels of interest
+frontalChannels  = { 'Fz' 'F1' 'F2' 'F3' 'F4' 'FCz' 'FC1' 'FC2' 'FC3' 'FC4' };
+parietalChannels = { 'Pz' 'P1' 'P2' 'P3' 'P4' 'POz' 'PO1' 'PO2' 'PO3' 'PO4' };
 
 
 %% Derived parameters

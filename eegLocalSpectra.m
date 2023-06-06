@@ -5,7 +5,7 @@ function eegLocalSpectra( channels )
 %
 % Extract event-related spectra at the specified electrode or average of an
 % electrode cluster from all TimeFrequencyDataP<#><Condition>.mat files
-% containing data centred more than one event that are located in the
+% containing data centred on more than one event, which are located in the
 % Current Folder and sub-folders of the Current Folder then save data in
 % one TimeFrequency<Location>.mat file
 %
@@ -64,7 +64,7 @@ disp( '_________________________________________________________________________
 disp( ' ' )
 disp( 'Extract event-related spectra at the specified electrode or average of an' )
 disp( 'electrode cluster from all TimeFrequencyDataP<#><condition>.mat files'     )
-disp( 'containing data centred more than one event that are located in the'       )
+disp( 'containing data centred on more than one event, which are located in the'  )
 disp( 'Current Folder and sub-folders of the Current Folder then save data in'    )
 disp( 'one TimeFrequency<Location>.mat file'                                      )
 disp( ' ' )
@@ -208,7 +208,7 @@ if ~isempty( channels )
         iChannels(ch) = find( iChannelSet == iCurrentChannel );
     end
 else
-    iChannels = 1:length( channels );
+    iChannels = 1:length( iChannelSet );
 end
 channelNames = { chanlocs(iChannels).labels };
 for w = 1:nCentres
