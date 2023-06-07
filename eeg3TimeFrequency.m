@@ -259,25 +259,24 @@ disp( [ num2str( frequencyResolution ) ' frequencies per octave' ] )
 disp( [ num2str( octaves ) ' octaves' ] )
 disp( [ num2str( nFrequencies ) ' frequencies' ] )
 disp( ' ' )
-disp( '• Channel numbers •' )
+disp( '• Channels •' )
 disp( '-------------------------------------------------------------------------' )
-if nChannels <= 10
-    disp( num2str( channelSet ) )
-elseif nChannels > 10 && nChannels <= 20
-    division = ceil( nChannels/2 );
-    disp( num2str( channelSet(1:division)     ) )
-    disp( num2str( channelSet(division+1:end) ) )
-elseif nChannels > 20 && nChannels <= 30
-    division = ceil( nChannels/3 );
-    disp( num2str( channelSet(1:division)            ) )
-    disp( num2str( channelSet(division+1:division*2) ) )
-    disp( num2str( channelSet(division*2+1:end)      ) )
-else
-    division = ceil( nChannels/4 );
-    disp( num2str( channelSet(1:division)              ) )
-    disp( num2str( channelSet(division+1:division*2)   ) )
-    disp( num2str( channelSet(division*2+1:division*3) ) )
-    disp( num2str( channelSet(division*3+1:end)        ) )
+ChannelList = [];
+divisions   = ceil( nChannels / 10 );
+for div = 1:divisions
+    ChannelList.(['C' num2str(div)]) = [];
+end
+for ch = 1:nChannels
+    if isnumeric( channelSet )
+        channelName = num2str( channelSet(ch) );
+    else
+        channelName = char( channelSet{ch} );
+    end
+    currentDivision = num2str( ceil( ch/10 ) );
+    ChannelList.(['C' currentDivision]) = [ ChannelList.(['C' currentDivision]) channelName ' ' ];
+end
+for div = 1:divisions
+    disp( ChannelList.(['C' num2str(div)]) )
 end
 disp( ' ' )
 
