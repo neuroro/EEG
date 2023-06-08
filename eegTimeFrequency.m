@@ -318,7 +318,7 @@ for n = 1:nFiles
     disp( [ 'Decomposing ' currentFile ] )
     disp( ' ' )
 
-    % Load
+    % Load EEG dataset into an EEGLAB struct
     loaderargin    = { 'filename', currentFile,   ...
                       'filepath', currentFolder, ...
                       'verbose',  'off'          };
@@ -330,9 +330,11 @@ for n = 1:nFiles
         error( [ 'Sampling rate in file not equal to ' num2str( samplingRate ) ] )
     end
 
-    % Channel indices
+    % Channel indices for named channels input
     if iscell( channelSet )
-        channelSet = eeg_chaninds( EEG, channelSet );
+        % Compare the channel names to the channel co-ordinates labels in
+        % the chanlocs.labels field
+        channelSet = eeg_chaninds( CurrentEEG, channelSet );
     end
 
 %     % Parallel loop through: Conditions
@@ -346,12 +348,12 @@ for n = 1:nFiles
         condition     = conditions{c};
 
         % Parallel broadcast variables
-        EEG           = CurrentEEG;
-        channels      = channelSet;
-        baselineLimit = baselineLimits;
-        stimulusLimit = stimulusLimits;
-        responseLimit = responseLimits;
-        blendDuration = blendingDuration;
+        EEG           = CurrentEEG;       % Struct copied to each parallel worker as pop_loadeset is slower
+        channels      = channelSet;       % Always indices at this point
+        baselineLimit = baselineLimits;   % In ms
+        stimulusLimit = stimulusLimits;   % In ms
+        responseLimit = responseLimits;   % In ms
+        blendDuration = blendingDuration; % In ms
 
         % Pre-allocate
         Decomposition = [];
@@ -401,20 +403,20 @@ for n = 1:nFiles
             % Non-events to exclude
             iPreEvents          = 1:nCurrentTrialEvents < iEpochEventStimulus; % Indices of events before the stimulus
             iNonEvents          = contains( currentTrialEvents, nonEvents );   % Indices of non-events such as fixation
-            iExclude            = or( iPreEvents', iNonEvents );
+            iExclude            = or( iPreEvents', iNonEvents );               % Exclude either (transpose was needed to keep it a vector)
 
             % Trial event-locked centerings
             currentTrialCentres = currentTrialEvents(~iExclude);
             nCentres            = length( currentTrialCentres );
 
             % Trial event times (in ms) relative to 0 ms
-            stimulusTime = 0;
-            if nCentres > 1 % Stimulus and response in the epoch
+            stimulusTime     = 0;
+            if nCentres > 1    % Stimulus and response in the epoch
                 responseTime = EEG.epoch(trial).eventlatency{iEpochEventResponse};
-            else            % Stimulus only, no response
+            else               % Stimulus only, no response
                 responseTime = EEG.times(end) - adjustment - 1; % Blend out by the end of the trial
             end
-            centreTimes = [ stimulusTime responseTime ];
+            centreTimes      = [ stimulusTime responseTime ];
 
             % Process trials with realistic initiation time (in ms)
             if responseTime >= minReactionTime
