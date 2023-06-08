@@ -142,6 +142,10 @@ end
 frontalChannels  = [ 5 6 11 12 ];  % [ 5  6  7  106 11 12 118 20 19 4  13 112 ];
 parietalChannels = [ ];            % [ 31 80 55 54  79 62 37  87 86 53 60 85  ];
 
+% % Channels of interest
+% frontalChannels  = { 'Fz' 'F1' 'F2' 'F3' 'F4' 'FCz' 'FC1' 'FC2' 'FC3' 'FC4' };
+% parietalChannels = { 'Pz' 'P1' 'P2' 'P3' 'P4' 'POz' 'PO1' 'PO2' 'PO3' 'PO4' };
+
 
 %% Derived parameters
 % -------------------------------------------------------------------------
@@ -313,6 +317,13 @@ for n = 1:nFiles
         error( [ 'Sampling rate in file not equal to ' num2str( samplingRate ) ] )
     end
 
+    % Channel indices for named channels input
+    if iscell( channelSet )
+        % Compare the channel names to the channel co-ordinates labels in
+        % the chanlocs.labels field
+        channelSet = eeg_chaninds( CurrentEEG, channelSet );
+    end
+
 %     % Parallel loop through: Conditions
 %     parpool;
 %     parfor c = 1:nConditions
@@ -324,13 +335,13 @@ for n = 1:nFiles
         condition       = conditions{c};
 
         % Parallel broadcast variables
-        EEG             = CurrentEEG;
-        channels        = channelSet;
-        baselineLimit   = baselineLimits;
-        stimulusLimit   = stimulusLimits;
-        initiationLimit = initiationLimits;
-        responseLimit   = responseLimits;
-        blendDuration   = blendingDuration;
+        EEG             = CurrentEEG;       % Struct copied to each parallel worker as pop_loadeset is slower
+        channels        = channelSet;       % Always indices at this point
+        baselineLimit   = baselineLimits;   % In ms
+        stimulusLimit   = stimulusLimits;   % In ms
+        initiationLimit = initiationLimits; % In ms
+        responseLimit   = responseLimits;   % In ms
+        blendDuration   = blendingDuration; % In ms
 
         % Pre-allocate
         Decomposition   = [];
