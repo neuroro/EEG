@@ -24,15 +24,16 @@ function eegLocalSpectra( channels )
 % >> eegLocalSpectra( { 'Fz' 'FCz' 'F1' 'F2' } )
 %
 % Input:
-%   Extract event-related spectra from a channel name or index, from the
+%   Extract event-related spectra from a channel name or index; from the
 %   average of a cluster of channels as a cell array of channel names or as
-%   a vector of channel indices, or from all channels as (), '', or []
+%   a vector of channel indices; or from all channels as (), '', [], or 0
 %   (optional input, default all)
 %
 % Output:
-%   TimeFrequency<Location>.mat file containing, for each event centring,
-%   pooled decompositions from all participants and conditions ready for
-%   statistics and grand averages per condition ready for plotting
+%   TimeFrequency<Location>.mat file containing, for each event-related
+%   windowing, pooled decompositions from all participants per condition,
+%   ready for peak finding or cluster statistics, and grand averages per
+%   condition ready for plotting
 %
 % • Requires •
 % -------------------------------------------------------------------------
@@ -64,7 +65,7 @@ disp( '•.° Localised Event-Related Spectra °.•' )
 disp( '_________________________________________________________________________' )
 disp( ' ' )
 disp( 'Extract event-related spectra at the specified electrode or average of an' )
-disp( 'electrode cluster from all TimeFrequencyData<Participant><condition>.mat'  )
+disp( 'electrode cluster from all TimeFrequencyData<Participant><Condition>.mat'  )
 disp( 'files containing data centred on more than one event, which are located'   )
 disp( 'in the Current Folder and sub-folders of the Current Folder then save'     )
 disp( 'data in one TimeFrequency<Location>.mat file'                              )
@@ -77,8 +78,8 @@ disp( ' ' )
 %% Input
 % -------------------------------------------------------------------------
 
-if ~nargin || isempty( channels ) || ~channels
-    channels = [];
+if ~nargin || ( isscalar( channels ) && ~channels ) || isempty( channels )
+    channels     = [];
 end
 
 
@@ -132,12 +133,12 @@ for f = 1:nFiles
         iParticipant               = iParticipant + 1;
 
         % Add current participant number to the list if not already included
-        participants(iParticipant) = str2double( participantNumber );
+        participants(iParticipant) = str2double( participantNumber );                               %#ok
 
     end
 
     % Add current file participant to the participant files list
-    participantList{f} = participantNumber;
+    participantList{f} = participantNumber;                                                         %#ok
 
 
     % Build a vector of unique conditions
@@ -150,18 +151,18 @@ for f = 1:nFiles
         iCondition             = iCondition + 1;
 
         % Add current condition to the list given not already included
-        conditions{iCondition} = currentCondition;
+        conditions{iCondition} = currentCondition;                                                  %#ok
 
     end
 
     % Add current file condition to the condition files list
-    conditionList{f} = currentCondition;
+    conditionList{f} = currentCondition;                                                            %#ok
 
 
 end
 
 % Sample size N participants
-N           = length( participants );
+N = length( participants );
 
 % Number of conditions
 nConditions = length( conditions );
@@ -176,6 +177,11 @@ Decomposition = load( fullfile( folderList{1}, fileList{1} ) );
 % Event-centred windowings
 eventCentres  = fieldnames( Decomposition );
 nCentres      = length( eventCentres );
+
+% Store conditions in struct
+for w = 1:nCentres
+    LocalSpectra.(eventCentres{w}).Conditions = conditions;
+end
 
 % Frequencies
 for w = 1:nCentres
@@ -215,7 +221,7 @@ if ~isempty( channels )
             currentChannel  = channels{ch};
             iCurrentChannel = find( strcmp( { ChannelCoordinates(:).labels }, currentChannel ) );
         end
-        iChannels(ch) = find( iChannelSet == iCurrentChannel );
+        iChannels(ch) = find( iChannelSet == iCurrentChannel );                                     %#ok
 
     end
 
@@ -228,8 +234,9 @@ end
 % Selected channel names
 channelNames  = { ChannelCoordinates(iChannelSet(iChannels)).labels };
 
-% Store channel co-ordinates
+% Store channel names and co-ordinates in struct
 for w = 1:nCentres
+    LocalSpectra.(eventCentres{w}).Channels           = channelNames;
     LocalSpectra.(eventCentres{w}).ChannelCoordinates = ChannelCoordinates;
 end
 
@@ -253,7 +260,7 @@ if nChannels > 1
     % Build list of channel names to display
     channelsText = [];
     for ch = 1:nChannels
-        channelsText = [ channelsText channelNames{ch} ' ' ];
+        channelsText = [ channelsText channelNames{ch} ' ' ];                                       %#ok
     end
 
     disp( [ 'Localised to the average of ' num2str( nChannels ) ' channels as a cluster:' ] )
@@ -355,10 +362,7 @@ for w = 1:nCentres
 end % for: Window centres
 
 
-%% Save
-% -------------------------------------------------------------------------
-
-% Location naming
+%% Location naming
 % -------------------------------------------------------------------------
 
 % Important channel names
@@ -455,15 +459,16 @@ else
         locationName = 'Average';
     end
 
-end % if number of selected electrodes
+end % if Number of selected electrodes
 
-% Save
+
+%% Save
 % -------------------------------------------------------------------------
 
 % File name
 fileName = [ 'TimeFrequency' locationName ];
 
-% Save .mat 
+% Save TimeFrequency<Location>.mat 
 save( fileName, '-struct', 'LocalSpectra', '-v7.3' )
 
 % Finish time
