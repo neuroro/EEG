@@ -4,10 +4,10 @@ function eegLocalSpectra( channels )
 % _________________________________________________________________________
 %
 % Extract event-related spectra at the specified electrode or average of an
-% electrode cluster from all TimeFrequencyDataP<#><Condition>.mat files
-% containing data centred on more than one event, which are located in the
-% Current Folder and sub-folders of the Current Folder then save data in
-% one TimeFrequency<Location>.mat file
+% electrode cluster from all TimeFrequencyData<Participant><Condition>.mat
+% files containing data centred on more than one event, which are located
+% in the Current Folder and sub-folders of the Current Folder then save
+% data in one TimeFrequency<Location>.mat file
 %
 % • Usage •
 % -------------------------------------------------------------------------
@@ -37,7 +37,8 @@ function eegLocalSpectra( channels )
 % • Requires •
 % -------------------------------------------------------------------------
 % Time-frequency decompositions of EEG data produced by eegTimeFrequency.m
-% or eeg3TimeFreqyency.m in TimeFrequencyDataP<#><Condition>.mat files
+% or eeg3TimeFreqyency.m in TimeFrequencyData<Participant><Condition>.mat
+% files
 %
 % • Author •
 % -------------------------------------------------------------------------
@@ -59,14 +60,14 @@ function eegLocalSpectra( channels )
 
 % Introduction
 disp( ' ' )
-disp( '•.° Localised event-related spectra °.•' )
+disp( '•.° Localised Event-Related Spectra °.•' )
 disp( '_________________________________________________________________________' )
 disp( ' ' )
 disp( 'Extract event-related spectra at the specified electrode or average of an' )
-disp( 'electrode cluster from all TimeFrequencyDataP<#><condition>.mat files'     )
-disp( 'containing data centred on more than one event, which are located in the'  )
-disp( 'Current Folder and sub-folders of the Current Folder then save data in'    )
-disp( 'one TimeFrequency<Location>.mat file'                                      )
+disp( 'electrode cluster from all TimeFrequencyData<Participant><condition>.mat'  )
+disp( 'files containing data centred on more than one event, which are located'   )
+disp( 'in the Current Folder and sub-folders of the Current Folder then save'     )
+disp( 'data in one TimeFrequency<Location>.mat file'                              )
 disp( ' ' )
 
 codeRunTime( 'Started at' )
@@ -81,7 +82,7 @@ if ~nargin || isempty( channels ) || ~channels
 end
 
 
-%% Participant x condition files
+%% Time-frequency decomposition .mat files
 % -------------------------------------------------------------------------
 
 % Wildcard file name
@@ -94,23 +95,17 @@ nFiles           = length( fileStruct );
 fileList         = { fileStruct(:).name   };
 folderList       = { fileStruct(:).folder };
 
-% Pre-allocate
-participantList  = {};
-participants     = [];
-iParticipant     = 0;
-conditionList    = {};
-conditions       = {};
-iCondition       = 0;
 
-% % Participant code
-% iTitleEnd          = length( 'TimeFrequencyData' );
-% iX1                = regexp( fileList{1}, '[0-9]+' );
-% iParticipantPrefix = iTitleEnd+1:iX1-1;
-% participantPrefix  = fileList{1}(iParticipantPrefix);
-
-
-% Build vectors of participant numbers and conditions
+%% Determine participants and conditions represented by the .mat files
 % -------------------------------------------------------------------------
+
+% Pre-allocate
+participantList  = {}; % Participant number files list
+participants     = []; % Unique participant numbers
+iParticipant     = 0;
+conditionList    = {}; % Condition files list
+conditions       = {}; % Unique conditions
+iCondition       = 0;
 
 % Loop through: Files
 for f = 1:nFiles
@@ -141,25 +136,25 @@ for f = 1:nFiles
 
     end
 
-    % Add current file participant to the participant file list
+    % Add current file participant to the participant files list
     participantList{f} = participantNumber;
 
 
     % Build a vector of unique conditions
     % ---------------------------------------------------------------------
 
-    % Check that this participant has not already been included
+    % Check that this condition has not already been included
     if ~any( strcmp( conditionList, currentCondition ) )
 
-        % Current index in the participant number list
+        % Current index in the condition list
         iCondition             = iCondition + 1;
 
-        % Add current participant number to the list if not already included
+        % Add current condition to the list given not already included
         conditions{iCondition} = currentCondition;
 
     end
 
-    % Add current file participant to the participant file list
+    % Add current file condition to the condition files list
     conditionList{f} = currentCondition;
 
 
@@ -175,6 +170,7 @@ nConditions = length( conditions );
 %% Decomposition parameters
 % -------------------------------------------------------------------------
 
+% Determine parameters from the first file
 Decomposition = load( fullfile( folderList{1}, fileList{1} ) );
 
 % Event-centred windowings
@@ -188,45 +184,91 @@ end
 nFrequencies  = length( LocalSpectra.(eventCentres{1}).Frequencies );
 
 % Times
+%   Time points vary per window centre
 for w = 1:nCentres
     LocalSpectra.(eventCentres{w}).Times = Decomposition.(eventCentres{w}).Times;
-    nTimes.(eventCentres{w})             = length( LocalSpectra.(eventCentres{w}).Times ); % Time points vary per window centre
+    nTimes.(eventCentres{w})             = length( LocalSpectra.(eventCentres{w}).Times );
 end
+
 
 % Channels
-iChannelSet = Decomposition.(eventCentres{1}).Channels;           % Channel indices of the channel co-ordinates that are in the decomposition
-chanlocs    = Decomposition.(eventCentres{1}).ChannelCoordinates; % Channel co-ordinates
+% -------------------------------------------------------------------------
+
+% Channels in the decomposition
+iChannelSet        = Decomposition.(eventCentres{1}).Channels;           % Channel indices of the EEG data (and channel co-ordinates)
+ChannelCoordinates = Decomposition.(eventCentres{1}).ChannelCoordinates; % Channel co-ordinates
+
+% Number of selected channels
+nChannels          = length( channels );
+
+% Selected channels from the decomposition
 if ~isempty( channels )
-    for ch = 1:length( channels )                                 % Loop through: channels to extract
-        % Find the index of each selected channel number
+
+    % Loop through: Channels to extract
+    for ch = 1:nChannels
+
+        % Find the index of each selected channel in the set of channels
+        % (indices) that are in the decomposition
         if isnumeric( channels )
-            iCurrentChannel  = channels(ch);
+            iCurrentChannel = channels(ch);
         elseif iscell( channels )
-            currentChannel   = channels{ch};
-            iCurrentChannel  = find( strcmp( { chanlocs(:).labels }, currentChannel ) );
+            currentChannel  = channels{ch};
+            iCurrentChannel = find( strcmp( { ChannelCoordinates(:).labels }, currentChannel ) );
         end
         iChannels(ch) = find( iChannelSet == iCurrentChannel );
+
     end
+
+% All channels in the decomposition
 else
     iChannels = 1:length( iChannelSet );
-end
-channelNames = { chanlocs(iChannels).labels };
-for w = 1:nCentres
-    LocalSpectra.(eventCentres{w}).ChannelCoordinates = chanlocs; % Store channel co-ordinates
+
 end
 
-% Display channels
-if length( channels ) > 1                                     % Multiple selected
-    channelsText = [];
-    for ch = 1:length( channels )
-        channelsText = [ channelsText channelNames{ch} ' ' ]; % Build list of channe names to display
-    end
-    disp( [ 'Averaging channels ' channelsText ] )
-elseif length( channels ) == 1
-    disp( [ 'Extracting channel ' channelNames{1} ] )         % One selected
-else
-    disp( 'Extracting all channels' )
+% Selected channel names
+channelNames  = { ChannelCoordinates(iChannelSet(iChannels)).labels };
+
+% Store channel co-ordinates
+for w = 1:nCentres
+    LocalSpectra.(eventCentres{w}).ChannelCoordinates = ChannelCoordinates;
 end
+
+
+%% Display information
+% -------------------------------------------------------------------------
+
+% Files
+disp( 'Extracting localised event-related spectra...' )
+disp( [ 'Windowed relative to ' num2str( nCentres ) ' experimental events' ] )
+disp( [ 'From ' num2str( nFiles ) ' time-frequency decompositions' ] )
+disp( [ 'Representing ' num2str( N ) ' participants and ' num2str( nConditions ) ' conditions' ] )
+
+
+% Channels
+% -------------------------------------------------------------------------
+
+% Multiple selected
+if nChannels > 1
+
+    % Build list of channel names to display
+    channelsText = [];
+    for ch = 1:nChannels
+        channelsText = [ channelsText channelNames{ch} ' ' ];
+    end
+
+    disp( [ 'Localised to the average of ' num2str( nChannels ) ' channels as a cluster:' ] )
+    disp( channelsText )
+
+% One selected
+elseif nChannels == 1
+    disp( [ 'Localised to channel ' channelNames{1} ] )
+
+% All selected
+else
+    disp( [ 'Localised to the average of all ' num2str( nChannels ) ' channels in the decompositions' ] )
+
+end
+
 disp( ' ' )
 
 clear Decomposition
@@ -330,7 +372,7 @@ P7  = 'P7';
 P8  = 'P8';
 
 % EGI channels
-if any( contains( { chanlocs(:).labels }, 'E' ) )
+if any( contains( { ChannelCoordinates(:).labels }, 'E' ) )
     Fz  = 'E11';
     FCz = 'E6';
     CPz = 'E55';
@@ -340,14 +382,14 @@ if any( contains( { chanlocs(:).labels }, 'E' ) )
 end
 
 % Important channel indices
-iFz  = find( strcmp( { chanlocs(:).labels }, Fz  ) );
-iFCz = find( strcmp( { chanlocs(:).labels }, FCz ) );
-iCPz = find( strcmp( { chanlocs(:).labels }, CPz ) );
-iPz  = find( strcmp( { chanlocs(:).labels }, Pz  ) );
-iPOz = find( strcmp( { chanlocs(:).labels }, POz ) );
-iOz  = find( strcmp( { chanlocs(:).labels }, Oz  ) );
-iP7  = find( strcmp( { chanlocs(:).labels }, P7  ) );
-iP8  = find( strcmp( { chanlocs(:).labels }, P8  ) );
+iFz  = find( strcmp( { ChannelCoordinates(:).labels }, Fz  ) );
+iFCz = find( strcmp( { ChannelCoordinates(:).labels }, FCz ) );
+iCPz = find( strcmp( { ChannelCoordinates(:).labels }, CPz ) );
+iPz  = find( strcmp( { ChannelCoordinates(:).labels }, Pz  ) );
+iPOz = find( strcmp( { ChannelCoordinates(:).labels }, POz ) );
+iOz  = find( strcmp( { ChannelCoordinates(:).labels }, Oz  ) );
+iP7  = find( strcmp( { ChannelCoordinates(:).labels }, P7  ) );
+iP8  = find( strcmp( { ChannelCoordinates(:).labels }, P8  ) );
 
 % Cluster of electrodes name
 if length( channels ) > 1 || ( isempty( channels ) && length( iChannelSet ) <= 7 )
