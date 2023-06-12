@@ -95,35 +95,37 @@ disp( ' ' )
 % Participant code in the file name that precedes the participant number
 participantCode  = 'P';
 
+
 % Stimulus event labels for each condition
+
+% Sternberg task
 conditions       = { 'STI5' 'STI7' 'STI9' };
 
-%% Altruism task
+% Altruism task
 % conditions       = { 'AccH' 'AccM' 'AccL' ...
 %                      'ShaH' 'ShaM' 'ShaL' };
 
-%% SRECOG task
+% SRECOG task
 % conditions       = { 'famousKnown'   'famousUnfamiliar'   ...
 %                      'standardKnown' 'standardUnfamiliar' };
 
-%%
 
 % Order in the trial of the response event relative to the stimulus event,
 % which is assumed to be 1st
 responseEvent    = 2; % 2nd after stimulus
 
+
 % Non-events, such as fixation, which should not be windowed around
 nonEvents        = { 'Fixation' 'fixation' 'FXTN' ...
                      'Empty'    'empty'           };
 
-%% SRECOG task
-% fixationEvents   = { 'Fixation' 'fixation' 'FXTN' };
+% Non-events in the Altruism task
+% boundaryEvents   = { 'b' };
 % for n = 0:9
 %     numberCharacters{n+1} = num2str(n);
 % end
-% nonEvents        = [ fixationEvents numberCharacters ];
+% nonEvents        = [ boundaryEvents numberCharacters ];
 
-%%
 
 % Time parameters
 samplingRate     = 1000;
@@ -152,13 +154,17 @@ if nargin < 4
     blending     = 'sigmoid';
 end
 
-% % Channels of interest (indices in the EEG data)
-% frontalChannels  = [ 5 6 11 12 ];  % [ 5  6  7  106 11 12 118 20 19 4  13 112 ];
-% parietalChannels = [ ];            % [ 31 80 55 54  79 62 37  87 86 53 60 85  ];
+% % Channels of interest (10-10 system)
+% frontalChannels  = { 'Fz' 'F1' 'F2' 'F3' 'F4' 'FCz' };
+% parietalChannels = { 'Pz' 'P1' 'P2' 'P3' 'P4' 'POz' };
 
-% Channels of interest
-frontalChannels  = { 'Fz' 'F1' 'F2' 'F3' 'F4' 'FCz' 'FC1' 'FC2' 'FC3' 'FC4' };
-parietalChannels = { 'Pz' 'P1' 'P2' 'P3' 'P4' 'POz' 'PO1' 'PO2' 'PO3' 'PO4' };
+% Channels of interest (EGI system)
+frontalChannels  = { 'E24' 'E19' 'E11' 'E4' 'E124' 'E12' 'E5' 'E6' };
+parietalChannels = { 'E52' 'E60' 'E61' 'E62' 'E78' 'E85' 'E92'     };
+
+% % Channels of interest (indices in the EEG data)
+% frontalChannels  = [ 5  6  7  106 11 12 118 20 19 4  13 112 ];
+% parietalChannels = [ 31 80 55 54  79 62 37  87 86 53 60 85  ];
 
 
 %% Derived parameters
@@ -169,7 +175,7 @@ responseEvent    = responseEvent - 1;
 
 % Times
 longestCycle     = samplingRate/frequencyLimits(1);
-edge             = ceil( pi/2 * longestCycle );     % Excised after decomposition to remove edge effects
+edge             = ceil( 1.5 * longestCycle );      % Excised after decomposition to remove edge effects
 if isempty( baselineLimits ) || baselineLimits(1) > -200
     startTime    = -200;                            % Start no later than -200 ms so that pre-stimulus data exists
 else
@@ -337,12 +343,11 @@ for n = 1:nFiles
         channelSet = eeg_chaninds( CurrentEEG, channelSet );
     end
 
-%     % Parallel loop through: Conditions
-%     parpool;
-%     parfor c = 1:nConditions
+    % Parallel loop through: Conditions
+    parfor c = 1:nConditions
 
-    % Loop through: Conditions
-    for c = 1:nConditions
+%     % Loop through: Conditions
+%     for c = 1:nConditions
 
         % Current condition event label
         condition     = conditions{c};
@@ -680,7 +685,7 @@ for n = 1:nFiles
                 iEdgeB      = iEdgeB1:iEdgeB2;
 
                 % Pad the edges by the neighbourhood
-                padding     = neighbourhood(2) * 1000 / samplingRate;
+                padding     = neighbourhood(2) * 1000 / samplingRate;       %#ok
                 iEdgeAA     = (iEdgeA1 - padding):iEdgeA2;
                 iEdgeBB     = iEdgeB1:(iEdgeB2 + padding);
 
