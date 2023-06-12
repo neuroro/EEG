@@ -1,4 +1,4 @@
-function plotERSpectra( eventRelatedSpectra, frequencies, times, varargin )
+function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 %
 % •.° Plot Event-Related Spectra °.•
 % _________________________________________________________________________
@@ -10,13 +10,13 @@ function plotERSpectra( eventRelatedSpectra, frequencies, times, varargin )
 % • Usage •
 % -------------------------------------------------------------------------
 % Function:
-% >> plotERSpectra( eventRelatedSpectra, frequencies, times, ...
-%                   'OptionName1', optionValue1, 'OptionName2', optionValue2, ... )
+% >> plotTimeFrequency( eventRelatedSpectra, frequencies, times, ...
+%                       'OptionName1', optionValue1, 'OptionName2', optionValue2, ... )
 %
 % Examples:
-% >> plotERSpectra( eventRelatedSpectra, frequencies, times )
-% >> plotERSpectra( eventRelatedSpectra, frequencies, times, 'colourscale', [], 'cbar', 'off' )
-% >> plotERSpectra( squeeze(mean(Stimulus.SpectralPower,3)), Stimulus.Frequencies, Stimulus.Times )
+% >> plotTimeFrequency( eventRelatedSpectra, frequencies, times )
+% >> plotTimeFrequency( eventRelatedSpectra, frequencies, times, 'colourscale', [], 'cbar', 'off' )
+% >> plotTimeFrequency( squeeze(mean(Stimulus.SpectralPower,1)), Stimulus.Frequencies, Stimulus.Times )
 %
 % Inputs:
 %   eventRelatedSpectra: Time-frequency data to plot using colour values
@@ -82,7 +82,7 @@ function plotERSpectra( eventRelatedSpectra, frequencies, times, varargin )
 if isempty( varargin )
     vars = [];
 else
-    vars = plotERSvars( eventRelatedSpectra, varargin{:} );
+    vars = plotTFvars( varargin{:} );
 end
 vars.XL  = 'Time (ms)';
 vars.X   = times;
@@ -262,9 +262,9 @@ end
 
 %% Variable input arguments -> variables struct
 % -------------------------------------------------------------------------
-function vars = plotERSvars( varargin )
+function vars = plotTFvars( varargin )
 
-[ varoptions, varoops ] = heatmapcases;
+[ varoptions, varoops ] = plotTFcases;
 
 for i = 1:2:length( varargin )-1
 
@@ -311,7 +311,7 @@ end
 
 %% Variable input cases
 % -------------------------------------------------------------------------
-function [ varoptions, varoops ] = heatmapcases
+function [ varoptions, varoops ] = plotTFcases
 
 % Named variable input cases
 varoptions.cs = {'colourscale' 'colorscale' 'colour scale' 'color scale' ...
