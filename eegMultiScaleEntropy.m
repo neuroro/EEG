@@ -134,7 +134,7 @@ folderList  = { FilesStruct(:).folder };
 % -------------------------------------------------------------------------
 
 % Load first EEG dataset
-disp( 'Determining parameters from the first dataset' )
+disp( 'Determining parameters from the first dataset...' )
 disp( ' ' )
 EEG = pop_loadset( 'filename', fileList{1}, 'filepath', folderList{1}, 'verbose', 'off' );
 
@@ -164,53 +164,66 @@ elseif ( nPoints > 10000 && nPoints < 30000 )
     disp( 'You have enough time samples to estimate MSE with good accuracy up to' )
     disp( [ 'high time-scales. You have ' num2str( ( nPoints / 10000 - 1 ) * 100 ) '% more time samples than 10000,' ] )
     disp( 'which has been shown to give reliable estimates (Wu et al., 2013)' )
-    disp( ' ' )
 
 % 10000 points
 elseif nPoints == 10000
     disp( 'You have enough time samples to estimate MSE with good accuracy up to' )
     disp( 'high time-scales. You have 10000 time samples, which has been shown to' )
     disp( 'give reliable estimates (Wu et al., 2013)' )
-    disp( ' ' )
 
 % 4000 - 10000 points
 elseif ( nPoints >= 4000 && nPoints < 10000 )
     if nPoints >= 7000
+        alert   = 'Caution';
         qualify = 'decent';
         caveat  = 'is decent.';
     elseif ( nPoints >= 5000 && nPoints < 7000 )
+        alert   = 'Warning';
         qualify = 'acceptable';
         caveat  = 'is acceptable.';
     else
+        alert   = 'WARNING';
         qualify = 'limited';
-        caveat  = 'is close to the minimum.';
+        caveat  = 'is just sufficient.';
     end
-    warning( [ 'You have enough time samples to estimate CMSE with ' qualify ' ' ... 
-               'accuracy but estimates will be noisy at higher time-scales. Averaging across trials ' ...
-               'is necessary (done for you in the last step) and averaging across an electrode cluster may help, if possible. ' ...
-               'You have ' num2str( ( nPoints / 4000 - 1 ) * 100 ) '% more points than the minimum of 4000, which ' caveat ] )
+    warningText = [ '[' 8 alert ': You have enough time samples to estimate CMSE with ' qualify '\n'   ...
+                          'accuracy, but estimates are likely to be unstable at higher time-scales.\n' ...
+                          'Averaging across trials is necessary (done for you in the last step).\n'    ...
+                          'Averaging across a scientifically-valid electrode cluster may help.\n'      ']' 8 ];
+    warningTxt2 = [ '[' 8 'You have ' num2str( ( nPoints / 4000 - 1 ) * 100 ) '%' ...
+                          ' more points than the minimum of 4000, which ' caveat  ']' 8 ];
+    fprintf( warningText )
+    disp( warningTxt2 )
 
 % 4000 points
 elseif nPoints == 4000
-    warning( [ 'You have enough time samples to estimate CMSE with limited ' ... 
-               'accuracy but estimates will be noisy at higher time-scales. Averaging across trials ' ...
-               'is necessary (done for you in the last step) and averaging across an electrode cluster may help, if possible. ' ...
-               'You have 4000 time samples, which is the minimum shown to give adequate convergence (Wu et al., 2013)' ] )
+    warningText = [ '[' 8 'WARNING: You have enough time samples to estimate CMSE with limited\n'   ...
+                          'accuracy, but estimates may be unstable at higher time-scales.\n'        ...
+                          'Averaging across trials is necessary (done for you in the last step).\n' ...
+                          'Averaging across a scientifically-valid electrode cluster may help.\n'   ...
+                          'You have 4000 time samples, which is the minimum shown to give\n'        ...
+                          'adequate convergence (Wu et al., 2013).\n'                               ']' 8 ];
+    fprintf( warningText )
 
 % < 4000 points
 elseif nPoints < 4000
     if nPoints >= 3000
-        qualify = { ' FEW ' 'may' };
-        caveat  = [ 'means CMSE estimates are likely to be inaccurate, but time-scales up to ' ...
-                    num2str( round( nPoints / 200 ) ) ' might be usable with extensive averaging ' ...
-                    '(across a large number of trials and electrodes).' ];
+        qualify = { 'TOO' 'may' };
+        caveat  = [ 'means CMSE estimates are likely to be inaccurate, '            ...
+                    'but time-scales up to ' num2str( round( nPoints / 200 ) ) '\n' ...
+                    'might be usable with extensive averaging.'                     ];
     else
-        qualify = { ' FAR TOO FEW ' 'will' };
+        qualify = { 'FAR TOO' 'will' };
         caveat  = 'means CMSE estimates, if they exist, are likely to be highly inaccurate.';
     end
-    warning( [ 'YOU HAVE' qualify{1} 'SIGNAL POINTS! CMSE estimates ' qualify{2} ' be inaccurate! '  ...
-               'Averaging across trials and electrodes will be necessary but it may ' ... 
-               'not be enough. You have ' num2str( nPoints/4000*100 ) '% of 4000 points, which ' caveat ] )
+    warningText = [ '[' 8 'WARNING: YOUR SIGNAL IS ' qualify{1} ' SHORT! CMSE estimates ' qualify{2} ' be inaccurate!\n' ...
+                          'Averaging across trials is necessary (done for you in the last step).\n'                    ...
+                          'Averaging across a scientifically-valid electrode cluster is probably\n'                    ']' 8 ];
+    warningTxt2 = [ '[' 8 'necessary, but may not be sufficient. You have ' num2str( nPoints/4000*100 ) '% of 4000 points, which' ']' 8 ];
+    fprintf( warningText )
+    disp( warningTxt2 )
+    fprintf( [ '[' 8 caveat '\n' ']' 8 ] )
+
 end
 
 disp( ' ' )
@@ -245,23 +258,26 @@ scaleThresholds = round( nPoints ./ pointThresholds );
 scaleThresholds = [ 1 scaleThresholds Inf ];
 
 % Scale zones
+scaleZones = cell(1,5);
 for z = 1:5
     scaleZones{z} = [ num2str( scaleThresholds(z) ) ' - ' num2str( scaleThresholds(z+1) ) ];
 end
 
 % Confidence zones
-confidenceZones = { [ 'Sample entropy may be exact, with a tiny confidence interval of the\n'     ...
-                      'estimate\n'                                                                ] ...
-                    [ 'Sample entropy may be fairly accurate, with a small confidence interval\n' ...
-                      'of the estimate\n'                                                         ] ...
-                    [ 'Sample entropy may be approximate, with a medium confidence interval of\n' ...
-                      'the estimate\n'                                                            ] ...
-                    [ 'Sample entropy may be fairly inaccurate, with a large confidence\n'        ...
-                      'interval of the estimate; but indicative of the entropy trend across\n'    ...
-                      'scales\n'                                                                  ] ...
-                    [ 'Sample entropy may be highly inexact, with an extreme confidence\n'        ...
-                      'interval of the estimate; but potentially suggestive of the entropy\n'     ...
-                      'trend across scales\n'                                                     ] };
+confidenceZones = { [ '  Sample entropy may be exact, with a tiny\n'      ...
+                      '  confidence interval of the estimate\n'           ] ...
+                    [ '  Sample entropy may be fairly accurate, with\n'   ...
+                      '  a small confidence interval of the estimate\n'   ] ...
+                    [ '  Sample entropy may be approximate, with a \n'    ...
+                      '  medium confidence interval of the estimate\n'    ] ...
+                    [ '  Sample entropy may be fairly inaccurate, with\n' ...
+                      '  a large confidence interval of the estimate;\n ' ...
+                      '  but indicative of the entropy trend across\n'    ...
+                      '  scales\n'                                        ] ...
+                    [ '  Sample entropy may be highly inexact, with an\n' ...
+                      '  extreme confidence interval of the estimate;\n'  ...
+                      '  but potentially suggestive of the entropy\n'     ...
+                      '  trend across scales\n'                           ] };
 
 
 %% Display CMSE information
@@ -341,7 +357,7 @@ for f = 1:nFiles
             eegSignal = squeeze( data(ch,:,t) );
 
             % CMSE for each channel x trial x time-scale
-            cmse(ch,t,:) = compositeMultiScaleEntropy( eegSignal, timeScales );
+            cmse(ch,t,:) = compositeMultiScaleEntropy( eegSignal, timeScales ); %#ok
 
         end
 
@@ -354,7 +370,7 @@ for f = 1:nFiles
         fileName = [ currentName ' MSE' ];
     end
     fullFilePath = fullfile( currentFolder, fileName );
-    save( fullFilePath, "cmse" )
+    save( fullFilePath, 'cmse' )
 
     % File finish time
     mseRunTime( [ currentName ' finished at' ] )
@@ -393,14 +409,17 @@ for f = 1:nMats
     currentName     = extractBefore( currentFile, '.mat' );
 
     % Load MSE for each channel x trial x time-scale
-    load( currentFullFile, "cmse" );
-    mse{f} = cmse;
+    load( currentFullFile, 'cmse' );
 
     % Average across trials
-    mse{f} = mean( mse{f}, 2, 'omitnan' );
+    cmse = mean( cmse, 2, 'omitnan' );
 
     % Store in MSE struct
-    MSE.Entropy(f,:,:) = squeeze( mse{f} ); % Files x channels x time-scales
+    MSE.Entropy(f,:,:) = squeeze( cmse ); % Files x channels x time-scales
+
+%     mse{f} = cmse;
+%     mse{f} = mean( mse{f}, 2, 'omitnan' );
+%     MSE.Entropy(f,:,:) = squeeze( mse{f} ); % Files x channels x time-scales
 
     % Save
     if ~contains( currentName, ' ' )
@@ -484,7 +503,7 @@ for cg = 1:1:cgMax
 
     coarseGrainIndices = (cg - 1) * scale + 1:cg * scale;
 
-    scaledSignal(cg)   = mean( signal(coarseGrainIndices) );
+    scaledSignal(cg)   = mean( signal(coarseGrainIndices) );                %#ok
 
 end
 
