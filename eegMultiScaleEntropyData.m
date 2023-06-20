@@ -1,4 +1,4 @@
-function eegMultiScaleEntropy( timeScales, setName )
+function eegMultiScaleEntropyData( timeScales, setName )
 %
 % •.° Composite Multi-Scale Entropy °.•
 % _________________________________________________________________________
@@ -6,9 +6,7 @@ function eegMultiScaleEntropy( timeScales, setName )
 % Measure the composite multi-scale entropy (CMSE) of electrical brain
 % activity in all EEGLAB datasets named in common that are located in the
 % Current Folder and sub-folders of the Current Folder and save
-% <Dataset>MSE.mat files for each dataset at the single-trial level and a
-% <setName>AverageCMSE.mat file for all datasets in the average (e.g. at
-% the level of particpants x conditions)
+% <Dataset>MSE.mat files for each dataset at the single-trial level
 % 
 % MSE needs a large number of continuous time points to accurately
 % determine entropy, particularly at higher time-scales:
@@ -19,12 +17,12 @@ function eegMultiScaleEntropy( timeScales, setName )
 % • Usage •
 % -------------------------------------------------------------------------
 % Function:
-% >> eegMultiScaleEntropy( timeScales, setName )
+% >> eegMultiScaleEntropyData( timeScales, setName )
 %
 % Examples:
-% >> eegMultiScaleEntropy()
-% >> eegMultiScaleEntropy( 20, '' )
-% >> eegMultiScaleEntropy( [1 20], 'Rest' )
+% >> eegMultiScaleEntropyData
+% >> eegMultiScaleEntropyData( 20, '' )
+% >> eegMultiScaleEntropyData( [1 20], 'Rest' )
 % 
 % Inputs:
 %   timeScales: Estimate entropy for scales 1 to the specified scale or
@@ -37,8 +35,7 @@ function eegMultiScaleEntropy( timeScales, setName )
 %
 % Outputs:
 %   <Dataset>MSE.mat files for each dataset containing individual CMSE at
-%   the single-trial level and a <setName>AverageCMSE.mat file containing
-%   the CMSE of all datasets in the average
+%   the single-trial level
 %
 % • Author •
 % -------------------------------------------------------------------------
@@ -92,9 +89,7 @@ disp( ' ' )
 disp( 'Measure the composite multi-scale entropy (CMSE) of electrical brain'      )
 disp( 'activity in all EEGLAB datasets named in common that are located in the'   )
 disp( 'Current Folder and sub-folders of the Current Folder and save'             )
-disp( '<Dataset>MSE.mat files for each dataset at the single-trial level and a'   )
-disp( '<setName>AverageCMSE.mat file for all datasets in the average (e.g. at'    )
-disp( 'the level of particpants x conditions)' )
+disp( '<Dataset>MSE.mat files for each dataset at the single-trial level'         )
 disp( ' ' )
 
 
@@ -155,7 +150,6 @@ EEG = pop_loadset( 'filename', fileList{1}, 'filepath', folderList{1}, 'verbose'
 % Determine parameters
 samplingRate = EEG.srate;
 nChannels    = EEG.nbchan;
-chanlocs     = EEG.chanlocs;
 nTrials      = EEG.trials;
 nPoints      = EEG.pnts;
 clear EEG
@@ -390,59 +384,6 @@ for f = 1:nFiles
     mseRunTime( [ currentName ' finished at' ] )
 
 end
-
-
-%% Individual MSE files
-% -------------------------------------------------------------------------
-
-% Search for all .mat files named in common located in the current folder 
-% and sub-folders of the current folder
-MatFilesStruct = dir( [ '**/*' setName '*MSE.mat' ] );
-nMats          = length( MatFilesStruct );
-matFileList    = { MatFilesStruct(:).name   };
-matFolderList  = { MatFilesStruct(:).folder };
-
-
-%% Average across trials and merge into a single file
-% -------------------------------------------------------------------------
-
-% MSE Struct
-MSE.Entropy         = [];
-MSE.ScaleLimits     = timeScales;
-MSE.TimeScaleLimits = timeScaleLimits;
-MSE.SamplingRate    = samplingRate;
-MSE.chanlocs        = chanlocs;
-
-% Join per-dataset CMSE.mat files together into a single .mat file
-for f = 1:nMats
-
-    % File
-    currentFile     = matFileList{f};
-    currentFolder   = matFolderList{f};
-    currentFullFile = fullfile( currentFolder, currentFile );
-    currentName     = extractBefore( currentFile, '.mat' );
-
-    % Load MSE for each channel x trial x time-scale
-    load( currentFullFile, 'cmse' );
-
-    % Average across trials
-    cmse = mean( cmse, 2, 'omitnan' );
-
-    % Store in MSE struct
-    MSE.Entropy(f,:,:) = squeeze( cmse ); % Files x channels x time-scales
-
-%     mse{f} = cmse;
-%     mse{f} = mean( mse{f}, 2, 'omitnan' );
-%     MSE.Entropy(f,:,:) = squeeze( mse{f} ); % Files x channels x time-scales
-
-    % Save
-    fileName = [ setName 'AverageCMSE' ];
-    save( fileName, "MSE" )
-
-end
-
-% Finish time
-mseRunTime( 'Finished at' )
 
 
 % _________________________________________________________________________
