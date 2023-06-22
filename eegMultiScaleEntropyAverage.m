@@ -6,7 +6,7 @@ function eegMultiScaleEntropyAverage( setName )
 % Average the composite multi-scale entropy (CMSE) of electrical brain
 % activity in all *MSE.mat files named in common that are located in the
 % Current Folder and sub-folders of the Current Folder and save a
-% <setName>AverageMSE.mat file for all CMSE data in the average
+% <setName>AverageCMSE.mat file for all CMSE data in the average
 %
 % • Usage •
 % -------------------------------------------------------------------------
@@ -25,7 +25,7 @@ function eegMultiScaleEntropyAverage( setName )
 %              (optional input, default all *MSE.mat files)
 %
 % Output:
-%   <setName>AverageMSE.mat file containing the CMSE of all *MSE.mat files
+%   <setName>AverageCMSE.mat file containing the CMSE of all *MSE.mat files
 %   in the average
 %
 % • Author •
@@ -55,8 +55,8 @@ disp( '_________________________________________________________________________
 disp( ' ' )
 disp( 'Average the composite multi-scale entropy (CMSE) of electrical brain'      )
 disp( 'activity in all *MSE.mat files named in common that are located in the'    )
-disp( 'Current Folder and sub-folders of the Current Folder and save a'           )
-disp( '<setName>AverageMSE.mat file for all CMSE data in the average'             )
+disp( 'Current Folder and sub-folders of the Current Folder and save an'          )
+disp( '<InputName>AverageCMSE.mat file for all CMSE data in the average'          )
 disp( ' ' )
 
 
@@ -94,25 +94,65 @@ nMats          = length( MatFilesStruct );
 matFileList    = { MatFilesStruct(:).name   };
 matFolderList  = { MatFilesStruct(:).folder };
 
+% Separator
+if any( contains( matFileList, ' ' ) )
+    separator  = ' ';
+elseif any( contains( matFileList, '_' ) ) && ~any( contains( matFileList, ' ' ) )
+    separator  = '_';
+elseif any( contains( matFileList, '-' ) ) && ~any( contains( matFileList, { ' ' '_' } ) )
+    separator  = '-';
+else
+    separator  = '';
+end
+
 
 %% Average across trials and merge into a single file
 % -------------------------------------------------------------------------
 
 % MSE Struct
-MSE.Entropy         = [];
-MSE.ScaleLimits     = timeScales;
-MSE.TimeScaleLimits = timeScaleLimits;
-MSE.SamplingRate    = samplingRate;
-MSE.chanlocs        = chanlocs;
+CMSE.Entropy    = [];
+firstMatFile    = fullfile( matFolderList{1}, matFileList{1} );
+CMSE.Dimensions = 'EEGs x Channels x Scales';
+try     % Data definition information should be stored in the *MSE.mat files
+    EntropyData                 = load( firstMatFile );
+    CMSE.Scales                 = EntropyData.timeScales;
+    CMSE.TimeScaleLimits        = EntropyData.timeScaleLimits;
+    CMSE.SamplingRate           = EntropyData.samplingRate;
+    CMSE.ChannelCoordinates     = EntropyData.chanlocs;
+    clear EntropyData
+catch   % Otherwise assume the first scale = 1
+    disp( [ '[' 8 'Warning: Data definition information is missing.'               ']' 8 ] )
+    disp( [ '[' 8 'Scales are assumed to be numbered consecutively starting at 1.' ']' 8 ] )
+    load( firstMatFile, 'cmse' )
+    CMSE.Scales                 = [ 1 size( cmse, 3 ) ];
+    try % Load an EEGLAB dataset with the same name as the first *MSE.mat file
+        mseFileSuffix           = [ separator 'MSE.mat' ];
+        dataName                = extractBefore( matFileList{1}, mseFileSuffix );
+        dataset                 = [ dataName '.set' ];
+        EEG                     = pop_loadset( 'filename', dataset,          ...
+                                               'filepath', matFolderList{1}, ...
+                                               'verbose', 'off'              );
+        EEG                     = eeg_checkset( EEG );
+        CMSE.SamplingRate       = EEG.srate;
+        CMSE.ChannelCoordinates = EEG.chanlocs;
+        timeScaleLimits{1}      = [ num2str( CMSE.Scales(1) * 1000 / EEG.srate ) ' ms' ];
+        timeScaleLimits{2}      = [ num2str( CMSE.Scales(2) * 1000 / EEG.srate ) ' ms' ];
+        CMSE.TimeScaleLimits    = timeScaleLimits;
+        clear EEG
+    catch
+        disp( [ '[' 8 'Warning: Sampling rate and channel co-ordinates are missing.' ']' 8 ] )
+    end
+    disp( ' ' )
+end
+clear cmse
 
-% Join per-dataset CMSE.mat files together into a single .mat file
+% Join per-dataset MSE.mat files together into an average CMSE.mat file
 for f = 1:nMats
 
     % File
     currentFile     = matFileList{f};
     currentFolder   = matFolderList{f};
     currentFullFile = fullfile( currentFolder, currentFile );
-    currentName     = extractBefore( currentFile, '.mat' );
 
     % Load MSE for each channel x trial x time-scale
     load( currentFullFile, 'cmse' );
@@ -121,21 +161,16 @@ for f = 1:nMats
     cmse = mean( cmse, 2, 'omitnan' );
 
     % Store in MSE struct
-    MSE.Entropy(f,:,:) = squeeze( cmse ); % Files x channels x time-scales
-
-%     mse{f} = cmse;
-%     mse{f} = mean( mse{f}, 2, 'omitnan' );
-%     MSE.Entropy(f,:,:) = squeeze( mse{f} ); % Files x channels x time-scales
-
-    % Save
-    if ~contains( currentName, ' ' )
-        fileName = [ setName 'StudyMSE' ];
-    else
-        fileName = [ setName ' Study MSE' ];
-    end
-    save( fileName, "MSE" )
+    CMSE.Entropy(f,:,:) = squeeze( cmse ); % Files x channels x time-scales
 
 end
+
+% Save
+if isempty( setName )
+    setName = 'Pooled';
+end
+fileName    = [ setName separator 'Average' separator 'CMSE' ];
+save( fileName, "CMSE" )
 
 % Finish time
 mseRunTime( 'Finished at' )

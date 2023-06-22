@@ -138,10 +138,21 @@ end
 
 % Search for all datasets named in common located in the current folder and
 % sub-folders of the current folder
-FilesStruct = dir( [ '**/' aWildDataset ] );
-nFiles      = length( FilesStruct );
-fileList    = { FilesStruct(:).name   };
-folderList  = { FilesStruct(:).folder };
+FilesStruct   = dir( [ '**/' aWildDataset ] );
+nFiles        = length( FilesStruct );
+fileList      = { FilesStruct(:).name   };
+folderList    = { FilesStruct(:).folder };
+
+% Separator
+if any( contains( fileList, ' ' ) )
+    separator = ' ';
+elseif any( contains( fileList, '_' ) ) && ~any( contains( fileList, ' ' ) )
+    separator = '_';
+elseif any( contains( fileList, '-' ) ) && ~any( contains( fileList, { ' ' '_' } ) )
+    separator = '-';
+else
+    separator = '';
+end
 
 
 %% Parameters
@@ -150,19 +161,21 @@ folderList  = { FilesStruct(:).folder };
 % Load first EEG dataset
 disp( 'Determining parameters from the first dataset...' )
 disp( ' ' )
-EEG = pop_loadset( 'filename', fileList{1}, 'filepath', folderList{1}, 'verbose', 'off' );
+EEG                = pop_loadset( 'filename', fileList{1},   ...
+                                  'filepath', folderList{1}, ...
+                                  'verbose', 'off'           );
+EEG                = eeg_checkset( EEG );
 
 % Determine parameters
-samplingRate = EEG.srate;
-nChannels    = EEG.nbchan;
-chanlocs     = EEG.chanlocs;
-nTrials      = EEG.trials;
-nPoints      = EEG.pnts;
+samplingRate       = EEG.srate;
+nChannels          = EEG.nbchan;
+nTrials            = EEG.trials;
+nPoints            = EEG.pnts;
 clear EEG
 
 % Time-scales
-timeScaleLimits{1} = num2str( 1 / samplingRate * 1000 );
-timeScaleLimits{2} = num2str( timeScales(end) / samplingRate * 1000 );
+timeScaleLimits{1} = [ num2str( timeScales(1)   / samplingRate * 1000 ) ' ms' ];
+timeScaleLimits{2} = [ num2str( timeScales(end) / samplingRate * 1000 ) ' ms' ];
 
 
 %% Stability - do you have enough samples?
@@ -312,8 +325,8 @@ disp( ' ' )
 disp( '• Entropy in the EEG •' )
 disp( '-------------------------------------------------------------------------' )
 disp( [ 'Measured at scales ' num2str( timeScales(1) ) ' - ' num2str( timeScales(end) ) ] )
-disp( [ 'Equivalent to time-scales of ' timeScaleLimits{1} ' ms - ' timeScaleLimits{2} ' ms' ] )
-disp( [ 'Probably realisable at time-scales of ' timeScaleLimits{1} ' ms - ' num2str( scaleThresholds(end-2)*1000/samplingRate ) ' ms' ] )
+disp( [ 'Equivalent to time-scales of ' timeScaleLimits{1} ' - ' timeScaleLimits{2} ] )
+disp( [ 'Probably realisable at time-scales of ' num2str( 1000/samplingRate ) ' ms - ' num2str( scaleThresholds(end-2)*1000/samplingRate ) ' ms' ] )
 disp( ' ' )
 disp( '• Predicted accuracy •')
 disp( '-------------------------------------------------------------------------' )
@@ -339,16 +352,17 @@ for f = 1:nFiles
     currentFile   = fileList{f};
     currentFolder = folderList{f};
     currentName   = extractBefore( currentFile, '.set' );
-
-    % Pre-allocate
-    cmse = NaN( nChannels, nTrials, timeScales(end) );
     disp( [ 'Measuring the entropy in ' currentName ] )
     disp( ' ' )
 
+    % Pre-allocate
+    cmse          = NaN( nChannels, nTrials, timeScales(end) );
+
     % Load
-    EEG  = pop_loadset( 'filename', currentFile, 'filepath', currentFolder, 'verbose', 'off' );
-    EEG  = eeg_checkset( EEG );
-    data = EEG.data;
+    EEG           = pop_loadset( 'filename', currentFile, 'filepath', currentFolder, 'verbose', 'off' );
+    EEG           = eeg_checkset( EEG );
+    data          = EEG.data;
+    chanlocs      = EEG.chanlocs;
 
     % Sanity checks
     if EEG.nbchan > nChannels
@@ -378,11 +392,7 @@ for f = 1:nFiles
     end
 
     % Save
-    if ~contains( currentName, ' ' )
-        fileName = [ currentName 'MSE' ];
-    else
-        fileName = [ currentName ' MSE' ];
-    end
+    fileName     = [ currentName separator 'MSE' ];
     fullFilePath = fullfile( currentFolder, fileName );
     save( fullFilePath, 'cmse' )
 
@@ -406,40 +416,39 @@ matFolderList  = { MatFilesStruct(:).folder };
 %% Average across trials and merge into a single file
 % -------------------------------------------------------------------------
 
-% MSE Struct
-MSE.Entropy         = [];
-MSE.ScaleLimits     = timeScales;
-MSE.TimeScaleLimits = timeScaleLimits;
-MSE.SamplingRate    = samplingRate;
-MSE.chanlocs        = chanlocs;
+% CMSE Struct
+CMSE.Entropy            = [];
+CMSE.Dimensions         = 'EEGs x Channels x Scales';
+CMSE.Scales             = timeScales;
+CMSE.TimeScaleLimits    = timeScaleLimits;
+CMSE.SamplingRate       = samplingRate;
+CMSE.ChannelCoordinates = chanlocs;
 
 % Join per-dataset CMSE.mat files together into a single .mat file
 for f = 1:nMats
 
     % File
-    currentFile     = matFileList{f};
-    currentFolder   = matFolderList{f};
-    currentFullFile = fullfile( currentFolder, currentFile );
-    currentName     = extractBefore( currentFile, '.mat' );
+    currentFile         = matFileList{f};
+    currentFolder       = matFolderList{f};
+    currentFullFile     = fullfile( currentFolder, currentFile );
 
     % Load MSE for each channel x trial x time-scale
     load( currentFullFile, 'cmse' );
 
     % Average across trials
-    cmse = mean( cmse, 2, 'omitnan' );
+    cmse                = mean( cmse, 2, 'omitnan' );
 
     % Store in MSE struct
-    MSE.Entropy(f,:,:) = squeeze( cmse ); % Files x channels x time-scales
-
-%     mse{f} = cmse;
-%     mse{f} = mean( mse{f}, 2, 'omitnan' );
-%     MSE.Entropy(f,:,:) = squeeze( mse{f} ); % Files x channels x time-scales
-
-    % Save
-    fileName = [ setName 'AverageCMSE' ];
-    save( fileName, "MSE" )
+    CMSE.Entropy(f,:,:) = squeeze( cmse ); % Files x channels x time-scales
 
 end
+
+% Save
+if isempty( setName )
+    setName = 'Pooled';
+end
+fileName    = [ setName separator 'Average' separator 'CMSE' ];
+save( fileName, "CMSE" )
 
 % Finish time
 mseRunTime( 'Finished at' )

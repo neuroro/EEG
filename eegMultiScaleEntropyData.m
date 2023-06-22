@@ -145,18 +145,21 @@ folderList  = { FilesStruct(:).folder };
 % Load first EEG dataset
 disp( 'Determining parameters from the first dataset...' )
 disp( ' ' )
-EEG = pop_loadset( 'filename', fileList{1}, 'filepath', folderList{1}, 'verbose', 'off' );
+EEG                = pop_loadset( 'filename', fileList{1},   ...
+                                  'filepath', folderList{1}, ...
+                                  'verbose', 'off'           );
+EEG                = eeg_checkset( EEG );
 
 % Determine parameters
-samplingRate = EEG.srate;
-nChannels    = EEG.nbchan;
-nTrials      = EEG.trials;
-nPoints      = EEG.pnts;
+samplingRate       = EEG.srate;
+nChannels          = EEG.nbchan;
+nTrials            = EEG.trials;
+nPoints            = EEG.pnts;
 clear EEG
 
 % Time-scales
-timeScaleLimits{1} = num2str( 1 / samplingRate * 1000 );
-timeScaleLimits{2} = num2str( timeScales(end) / samplingRate * 1000 );
+timeScaleLimits{1} = [ num2str( timeScales(1)   / samplingRate * 1000 ) ' ms' ];
+timeScaleLimits{2} = [ num2str( timeScales(end) / samplingRate * 1000 ) ' ms' ];
 
 
 %% Stability - do you have enough samples?
@@ -306,8 +309,8 @@ disp( ' ' )
 disp( '• Entropy in the EEG •' )
 disp( '-------------------------------------------------------------------------' )
 disp( [ 'Measured at scales ' num2str( timeScales(1) ) ' - ' num2str( timeScales(end) ) ] )
-disp( [ 'Equivalent to time-scales of ' timeScaleLimits{1} ' ms - ' timeScaleLimits{2} ' ms' ] )
-disp( [ 'Probably realisable at time-scales of ' timeScaleLimits{1} ' ms - ' num2str( scaleThresholds(end-2)*1000/samplingRate ) ' ms' ] )
+disp( [ 'Equivalent to time-scales of ' timeScaleLimits{1} ' - ' timeScaleLimits{2} ] )
+disp( [ 'Probably realisable at time-scales of ' num2str( 1000/samplingRate ) ' ms - ' num2str( scaleThresholds(end-2)*1000/samplingRate ) ' ms' ] )
 disp( ' ' )
 disp( '• Predicted accuracy •')
 disp( '-------------------------------------------------------------------------' )
@@ -333,16 +336,17 @@ for f = 1:nFiles
     currentFile   = fileList{f};
     currentFolder = folderList{f};
     currentName   = extractBefore( currentFile, '.set' );
-
-    % Pre-allocate
-    cmse = NaN( nChannels, nTrials, timeScales(end) );
     disp( [ 'Measuring the entropy in ' currentName ] )
     disp( ' ' )
 
+    % Pre-allocate
+    cmse          = NaN( nChannels, nTrials, timeScales(end) );
+
     % Load
-    EEG  = pop_loadset( 'filename', currentFile, 'filepath', currentFolder, 'verbose', 'off' );
-    EEG  = eeg_checkset( EEG );
-    data = EEG.data;
+    EEG           = pop_loadset( 'filename', currentFile, 'filepath', currentFolder, 'verbose', 'off' );
+    EEG           = eeg_checkset( EEG );
+    data          = EEG.data;
+    chanlocs      = EEG.chanlocs;
 
     % Sanity checks
     if EEG.nbchan > nChannels
@@ -372,13 +376,17 @@ for f = 1:nFiles
     end
 
     % Save
-    if ~contains( currentName, ' ' )
-        fileName = [ currentName 'MSE' ];
-    else
+    if contains( currentName, ' ' )
         fileName = [ currentName ' MSE' ];
+    elseif contains( currentName, '_' )
+        fileName = [ currentName '_MSE' ];
+    elseif contains( currentName, '-' ) && ~contains( currentName, '_' )
+        fileName = [ currentName '-MSE' ];
+    else
+        fileName = [ currentName 'MSE' ];
     end
     fullFilePath = fullfile( currentFolder, fileName );
-    save( fullFilePath, 'cmse' )
+    save( fullFilePath, 'cmse', 'timeScales', 'timeScaleLimits', 'samplingRate', 'chanlocs' )
 
     % File finish time
     mseRunTime( [ currentName ' finished at' ] )
