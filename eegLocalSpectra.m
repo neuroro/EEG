@@ -272,7 +272,7 @@ elseif nChannels == 1
 
 % All selected
 else
-    disp( [ 'Localised to the average of all ' num2str( nChannels ) ' channels in the decompositions' ] )
+    disp( [ 'Localised to the average of all ' num2str( iChannelSet ) ' channels in the decompositions' ] )
 
 end
 
