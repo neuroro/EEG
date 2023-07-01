@@ -171,7 +171,9 @@ eventCentres = fieldnames( LocalSpectra );
 nCentres     = length( eventCentres );
 
 % Time-frequency metrics
-metrics      = fieldnames( LocalSpectra(eventCentres{1}).GrandAverage );
+localFields  = fieldnames( LocalSpectra.(eventCentres{1}) );
+iGrand       = contains( localFields, 'Grand' );
+metrics      = localFields(~iGrand);
 nMetrics     = length( metrics );
 
 % Conditions
@@ -234,17 +236,17 @@ disp( [ 'Extrema are extracted within frequencies of ' num2str( frequencyBand(1)
 disp( 'Times in ms are limited per window centre in order' )
 disp( num2str( timeLimits ) )
 if contains( method, 'local' )
-    if ~negative
+    if ~minima
         disp( 'Peaks are joint local maxima (across both frequencies and times)' )
         disp( 'with the largest joint prominence' )
-    elseif negative
+    else
         disp( 'Sinks are joint local minima (across both frequencies and times)' )
         disp( 'with the largest joint prominence' )
     end
 else
-    if ~negative
+    if ~minima
         disp( 'Peaks are the maximum of the maximum across times per frequency' )
-    elseif negative
+    else
         disp( 'Sinks are the minimum of the minimum across times per frequency' )
     end
 end
@@ -255,22 +257,26 @@ disp( ' ' )
 % -------------------------------------------------------------------------
 
 % Short metric names
-iPower               = contains( metrics, 'Power',     'IgnoreCase', true );
-iCoherence           = contains( metrics, 'Coherence', 'IgnoreCase', true );
-measures             = metrics;
-measures(iPower)     = { 'Power'     };
-measures(iCoherence) = { 'Coherence' };
-
-% Pre-allocate
-dimensions = { '' 'Frequency' 'Time' };
+iPower                  = contains( metrics, 'Power',     'IgnoreCase', true );
+iCoherence              = contains( metrics, 'Coherence', 'IgnoreCase', true );
+measures                = metrics;
+measures(iPower)        = { 'Power'     };
+measures(iCoherence)    = { 'Coherence' };
 for w = 1:nCentres
     for m = 1:nMetrics
-        dimensions{1}   = metrics{m};
         if ~minima
             measures{m} = [ extremum measures{m} ];
         else
             measures{m} = [ measures{m} extremum ];
         end
+    end
+end
+
+% SpectralPeaks struct peak field names and field pre-allocation
+dimensions = { '' 'Frequency' 'Time' };
+for w = 1:nCentres
+    for m = 1:nMetrics
+        dimensions{1}   = metrics{m};
         for d = 1:length( dimensions )
             if ~minima
                 peakFields{d} = [ extremum dimensions{d} ];                 %#ok
@@ -282,7 +288,7 @@ for w = 1:nCentres
     end
 end
 
-% Loop through: Window centres
+% Loop through: Event-related windows
 for w = 1:nCentres
 
     % Current event centre
@@ -302,7 +308,7 @@ for w = 1:nCentres
     for m = 1:nMetrics
 
         % Current time-frequency metric
-        currentMetric  = metrics{m};
+        currentMetric = metrics{m};
 
         % Loop through: Conditions
         for c = 1:nConditions
@@ -312,7 +318,7 @@ for w = 1:nCentres
             for p = 0:N
 
 
-                %% Time-frequency window to extract peaks or basins from
+                %% Time-frequency window in which to find a peak or sink
                 % ---------------------------------------------------------
 
                 % Current participant x condition time-frequency window
@@ -332,10 +338,11 @@ for w = 1:nCentres
                 timeFrequencyWindow = timeFrequencyWindow(iBand1:iBand2,:);
 
 
-                %% Find the peak or basin
+                %% Find the peak or sink
                 % ---------------------------------------------------------
 
-                % Minima equivalent to -max( -data )
+                % Sink minimum sign correction: min = -max( -data )
+                % Find minima using max( -data ) followed by -max below
                 if minima
                     timeFrequencyWindow = -timeFrequencyWindow;
                 end
@@ -416,8 +423,8 @@ for w = 1:nCentres
                     prominentMaxima = prominences .* localMaxima;
 
                     % Most prominent local maximum (joint sum)
-                    maxProminent  = max( prominentMaxima, [], 'all', 'omitnan' ); % max will give the first of multiple equal max values
-                    iLocalMaximum = prominentMaxima == maxProminent;
+                    maxProminent    = max( prominentMaxima, [], 'all', 'omitnan' ); % max will give the first of multiple equal max values
+                    iLocalMaximum   = prominentMaxima == maxProminent;
 
 
                     % Multiple equally jointly prominent maxima
@@ -434,9 +441,9 @@ for w = 1:nCentres
                     
                     % Most powerful (joint sum)
                     if sum( iLocalMaximum, 'all' ) > 1
-                        localMaxPower = timeFrequencyWindow(iLocalMaximumS);
-                        [ ~, iMax ]   = max( localMaxPower, [], 'omitnan' );
-                        iLocalMaximum = iLocalMaximumS(iMax);
+                        localMaxPower   = timeFrequencyWindow(iLocalMaximumS);
+                        [ ~, iMax ]     = max( localMaxPower, [], 'omitnan' );
+                        iLocalMaximum   = iLocalMaximumS(iMax);
                     end
 
 
@@ -489,8 +496,8 @@ for w = 1:nCentres
                 % ---------------------------------------------------------
 
                 % Peak window frequency limits
-                peakFrequencyLimits = [ ( peakFrequency - peakSize(1) ) ...
-                                        ( peakFrequency + peakSize(1) ) ];
+                peakFrequencyLimits         = [ ( peakFrequency - peakSize(1) ) ...
+                                                ( peakFrequency + peakSize(1) ) ];
 
                 % Peak window frequency limit indices
                 [ ~, iFrequencyPeakLimit1 ] = min( abs( frequenciesAll - peakFrequencyLimits(1) ) );
@@ -498,23 +505,28 @@ for w = 1:nCentres
                 iFrequenciesPeak            = iFrequencyPeakLimit1:iFrequencyPeakLimit2;
 
                 % Peak window time limits
-                peakTimeLimits = [ ( peakTime - peakSize(2) ) ...
-                                   ( peakTime + peakSize(2) ) ];
+                peakTimeLimits              = [ ( peakTime - peakSize(2) ) ...
+                                                ( peakTime + peakSize(2) ) ];
 
                 % Peak window time limit indices
-                [ ~, iTimePeakLimit1 ] = min( abs( timesAll - peakTimeLimits(1) ) );
-                [ ~, iTimePeakLimit2 ] = min( abs( timesAll - peakTimeLimits(2) ) );
-                iTimesPeak             = iTimePeakLimit1:iTimePeakLimit2;
+                [ ~, iTimePeakLimit1 ]      = min( abs( timesAll - peakTimeLimits(1) ) );
+                [ ~, iTimePeakLimit2 ]      = min( abs( timesAll - peakTimeLimits(2) ) );
+                iTimesPeak                  = iTimePeakLimit1:iTimePeakLimit2;
 
 
                 %% Extract the mean oscillatory peak or sink
                 % ---------------------------------------------------------
 
-                % Select the peak window
+                % Select the peak or sink window
                 peakWindow = timeFrequency(iFrequenciesPeak,iTimesPeak);
 
-                % Unweighted average across the peak window
-                peak = mean( peakWindow(:), 'omitnan' );
+                % Unweighted average across the peak or sink window
+                peak       = mean( peakWindow(:), 'omitnan' );
+
+                % Sink minimum sign correction: min = -max( -data )
+                if minima
+                    peak   = -peak;
+                end
 
 
                 %% Store in struct
@@ -543,7 +555,8 @@ for w = 1:nCentres
 %% Save peaks or sinks
 % -------------------------------------------------------------------------
 
-        % Export a comma separated matrix for each window centre and metric
+        % Export a comma separated matrix for each enumerated dimension of
+        % the peak or sink of each oscillatory metric in each window centre
         for d = 1:length( peakFields )
             if d == 1
                 currentMeasure = measures{m};
@@ -558,7 +571,7 @@ for w = 1:nCentres
 
     end % for: Time-frequency metrics
 
-end % for: Window centres
+end % for: Event-related windows
 
 
 % Save matlab matrix
