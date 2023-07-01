@@ -17,7 +17,7 @@ Calculate descriptive statistics on any numeric array using descriptiveStatistic
 #
 Rohan O. C. King, @neuroro
 
-I hope my code finds use; if you use it please cite the function or the repository as, respectively:
+I hope my code finds use; if you use it please cite the function or the repository, for example in APA as, respectively:
 
 King, R. (2023). functionName [MATLAB code]. GitHub. https://github.com/neuroro/EEG/functionName.m
 
