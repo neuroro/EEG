@@ -22,3 +22,5 @@ I hope my code finds use; if you use it please cite the function or the reposito
 King, R. (2023). functionName [MATLAB code]. GitHub. https://github.com/neuroro/EEG/functionName.m
 
 King, R. (2023). EEG [GitHub repository]. GitHub. https://github.com/neuroro/EEG
+
+Updated Sat 1st July 2023
