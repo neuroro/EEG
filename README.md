@@ -19,6 +19,6 @@ Rohan O. C. King, @neuroro
 
 I hope my code finds use; if you use it please cite the function or the repository as, respectively:
 
-King, R. (2023). <Function Name> [MATLAB code]. GitHub. https://github.com/neuroro/EEG/<Function Name>
+King, R. (2023). functionName [MATLAB code]. GitHub. https://github.com/neuroro/EEG/functionName.m
 
 King, R. (2023). EEG [GitHub repository]. GitHub. https://github.com/neuroro/EEG
