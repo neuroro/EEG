@@ -14,6 +14,17 @@ Calculate composite multi-scale entropy per EEGLAB dataset using eegMultiScaleEn
 
 Calculate descriptive statistics on any numeric array using descriptiveStatistics.m
 
+
+# Coming soon...
+
+Monte Carlo permutation test of paired data
+Monte Carlo permutation test of unpaired data
+
+Monte Carlo custer permutation tests with cluster formation and a distance function
+
+Plot line graphs with shading representing the standard error of the mean and optional shading for a sub-domain window (for ERP components or frequency bands, for example) using plotShadedLine.m
+
+
 #
 Rohan O. C. King, @neuroro
 
