@@ -1,4 +1,4 @@
-function eegLocalSpectra( channels )
+function eegLocalSpectra( channels, imputation )
 %
 % •.° Localised Event-Related Spectra °.•
 % _________________________________________________________________________
@@ -23,11 +23,15 @@ function eegLocalSpectra( channels )
 % >> eegLocalSpectra( [5 6 11 12] )
 % >> eegLocalSpectra( { 'Fz' 'FCz' 'F1' 'F2' } )
 %
-% Input:
-%   Extract event-related spectra from a channel name or index; from the
-%   average of a cluster of channels as a cell array of channel names or as
-%   a vector of channel indices; or from all channels as (), '', [], or 0
-%   (optional input, default all)
+% Inputs:
+%   channels:   Extract event-related spectra from a channel name or index;
+%                 from the average of a cluster of channels as a cell array
+%                 of channel names or as a vector of channel indices; or
+%                 from all channels as (), '', [], or 0
+%                 (optional input, default all)
+%   imputation: Threshold for imputation as the minimum number of trials
+%                 considered usable, below which imputation will be used
+%                 (optional input, default 10)
 %
 % Output:
 %   TimeFrequency<Location>.mat file containing, for each event-related
@@ -75,11 +79,17 @@ codeRunTime( 'Started at' )
 disp( ' ' )
 
 
-%% Input
+%% Default inputs
 % -------------------------------------------------------------------------
 
 if ~nargin || ( isscalar( channels ) && ~channels ) || isempty( channels )
-    channels     = [];
+    channels = [];
+end
+
+if nargin < 2 || ~isscalar( imputation ) || ~isnumeric( imputation )
+    minimumTrialCount = 10;
+else
+    minimumTrialCount = imputation;
 end
 
 
@@ -185,15 +195,17 @@ end
 
 % Frequencies
 for w = 1:nCentres
-    LocalSpectra.(eventCentres{w}).Frequencies = Decomposition.(eventCentres{w}).Frequencies;
+    LocalSpectra.(eventCentres{w}).Frequencies      = Decomposition.(eventCentres{w}).Frequencies;
+    LocalSpectra.(eventCentres{w}).FrequenciesUnits = 'Hz';
 end
 nFrequencies  = length( LocalSpectra.(eventCentres{1}).Frequencies );
 
 % Times
 %   Time points vary per window centre
 for w = 1:nCentres
-    LocalSpectra.(eventCentres{w}).Times = Decomposition.(eventCentres{w}).Times;
-    nTimes.(eventCentres{w})             = length( LocalSpectra.(eventCentres{w}).Times );
+    LocalSpectra.(eventCentres{w}).Times      = Decomposition.(eventCentres{w}).Times;
+    LocalSpectra.(eventCentres{w}).TimesUnits = 'milliseconds';
+    nTimes.(eventCentres{w})                  = length( LocalSpectra.(eventCentres{w}).Times );
 end
 
 
@@ -263,7 +275,7 @@ if nChannels > 1
         channelsText = [ channelsText channelNames{ch} ' ' ];                                       %#ok
     end
 
-    disp( [ 'Localised to the average of ' num2str( nChannels ) ' channels as a cluster:' ] )
+    disp( [ 'Localised to the average of ' num2str( iChannels ) ' channels as a cluster:' ] )
     disp( channelsText )
 
 % One selected
@@ -285,9 +297,14 @@ clear Decomposition
 % -------------------------------------------------------------------------
 
 % Pre-allocate
+impute = false;
 for w = 1:nCentres
-    LocalSpectra.(eventCentres{w}).SpectralPower  = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
-    LocalSpectra.(eventCentres{w}).PhaseCoherence = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
+    LocalSpectra.(eventCentres{w}).SpectralPower            = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
+    LocalSpectra.(eventCentres{w}).SpectralPowerUnits       = 'dB relative to baseline (mean spectrum)';
+    LocalSpectra.(eventCentres{w}).SpectralPowerDimensions  = 'Participants x Conditions x Frequencies x Times';
+    LocalSpectra.(eventCentres{w}).PhaseCoherence           = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
+    LocalSpectra.(eventCentres{w}).PhaseCoherenceUnits      = 'Proportion of phase alignment';
+    LocalSpectra.(eventCentres{w}).PhaseCoherenceDimensions = 'Participants x Conditions x Frequencies x Times';
 end
 
 % Loop through: Files per participant per condition
@@ -318,12 +335,50 @@ for f = 1:nFiles
 
         currentCentre  = eventCentres{w};
 
-        % Select channels
-        spectralPower  = Decomposition.(currentCentre).SpectralPower(iChannels,:,:);  % Channels x frequencies x times
-        phaseCoherence = Decomposition.(currentCentre).PhaseCoherence(iChannels,:,:); % Channels x frequencies x times
+        % Power spectra and phase cohereneces at the selected channels
+        % -----------------------------------------------------------------
+
+        % Check all criteria
+        if    ~isempty( Decomposition.(currentCentre).SpectralPower  ) ...
+           && ~isempty( Decomposition.(currentCentre).PhaseCoherence ) ...
+           && ~isempty( Decomposition.(currentCentre).Coefficients   ) ...
+           && nChannels <= length( iChannelSet )                       ...
+           && size( Decomposition.(currentCentre).Coefficients, 1 ) >= minimumTrialCount
+
+            % Copy from the current decomposition
+            spectralPower  = Decomposition.(currentCentre).SpectralPower(iChannels,:,:);  % Channels x frequencies x times
+            phaseCoherence = Decomposition.(currentCentre).PhaseCoherence(iChannels,:,:); % Channels x frequencies x times
+        
+        % Incorrect input
+        elseif nChannels > length( iChannelSet )
+            error( [ 'Error: You selected a greater number of channels than ' ...
+                     'exist in your time-frequency data files. '              ...
+                     'Fix: Input all or a sub-set of the channels that are '  ...
+                     'represented in your TimeFrequency*.mat files.'          ] )
+
+        % Imputation: Set data with too-few trials or no values to NaN so
+        %   that the initial grand average is true for good included data
+        %   and for later replacement by the initial grand average
+        else
+
+            % Imputation is needed for this study
+            impute = true;
+
+            % Set event-related spectra to NaN
+            spectralPower  = NaN( nChannels, nFrequencies, nTimes );
+            phaseCoherence = NaN( nChannels, nFrequencies, nTimes );
+            disp( [ '[' 8 'Warning: Imputing ' currentCentre '-Related data in ' currentFile ' as it contains too-few or no trials' ']' 8 ] )
+        
+            % Store the information needed to impute the correct data
+            Imputations(f).FullFilePath            = currentFilePath;                               %#ok
+            Imputations(f).AffectedEventWindows(w) = true;                                          %#ok
+            Imputations(f).ParticipantIndex        = iParticipant;                                  %#ok
+            Imputations(f).ConditionIndex          = iCondition;                                    %#ok
+        
+        end
         
         % Average across channels
-        spectralPower  = mean( spectralPower,  1, 'omitnan' );
+        spectralPower  = mean( spectralPower,  1, 'omitnan' ); % An entirety of NaNs will still average to NaN
         phaseCoherence = mean( phaseCoherence, 1, 'omitnan' );
 
         % Clean up
@@ -334,12 +389,12 @@ for f = 1:nFiles
         LocalSpectra.(currentCentre).SpectralPower(iParticipant,iCondition,:,:)  = spectralPower;
         LocalSpectra.(currentCentre).PhaseCoherence(iParticipant,iCondition,:,:) = phaseCoherence;
         
-    end % for: Window centres
+    end % for Window centres
 
-end % for: Files
+end % for Files
 
 
-%% Grand average spectra per condition
+%% Grand average spectra per condition (initial Grand Average if imputing)
 % -------------------------------------------------------------------------
 
 % Loop through: Window centres
@@ -347,11 +402,17 @@ for w = 1:nCentres
 
     currentCentre = eventCentres{w};
 
-    % Mean
+    % Spectral Power
     LocalSpectra.(currentCentre).GrandAverage.SpectralPower  ...
          = mean( LocalSpectra.(currentCentre).SpectralPower,  1, 'omitnan' );
+    LocalSpectra.(currentCentre).GrandAverage.SpectralPowerunits       = 'dB relative to baseline (mean spectrum)';
+    LocalSpectra.(currentCentre).GrandAverage.SpectralPowerDimensions  = 'Conditions x Frequencies x Times';
+
+    % Phase Coherence
     LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence ...
          = mean( LocalSpectra.(currentCentre).PhaseCoherence, 1, 'omitnan' );
+    LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceUnits      = 'Proportion of phase alignment';
+    LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceDimensions = 'Conditions x Frequencies x Times';
 
     % Clean up
     LocalSpectra.(currentCentre).GrandAverage.SpectralPower  ...
@@ -359,7 +420,80 @@ for w = 1:nCentres
     LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence ...
          = squeeze( LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence );
 
-end % for: Window centres
+end % for Window centres
+
+
+%% Imputation
+% -------------------------------------------------------------------------
+
+% Check imputation is needed for this study
+if impute
+
+    % Loop through: Participant x condition files
+    for f = 1:nFiles
+    
+        % Check imputation is needed for the current file
+        if ~isempty( Imputations(f).AffectedWindows ) && any( Imputations(f).AffectedWindows )
+    
+            % Affected participant and condition indices in LocalSpectra
+            % for the current file
+            iParticipant  = Imputations(f).ParticipantIndex;
+            iCondition    = Imputations(f).ConditionIndex;
+    
+            % Loop through: Event-related windows
+            for w = 1:nCentres
+    
+                % Check imputation is needed for the current window
+                if Imputations(f).AffectedWindows(w)
+    
+                    % Affected event-related window
+                    affectedCentre = eventCentres{w};
+
+
+                    % Impute missing or insufficient data
+                    % -------------------------------------------------------------------------
+
+                    % Replace missing (all NaN) individual local spectra
+                    % data with the local grand average
+                    LocalSpectra.(affectedCentre).SpectralPower(iParticipant,iCondition,:,:)  ...
+         = squeeze( LocalSpectra.(affectedCentre).GrandAverage.SpectralPower(iCondition,:,:)  );
+                    LocalSpectra.(affectedCentre).PhaseCoherence(iParticipant,iCondition,:,:) ...
+         = squeeze( LocalSpectra.(affectedCentre).GrandAverage.PhaseCoherence(iCondition,:,:) );
+
+
+                end % if Impute this window
+    
+            end % for Event-related windows
+    
+        end % if Impute this file
+    
+    end % for Files
+
+
+    % Grand average spectra per condition (complete imputed)
+    % ---------------------------------------------------------------------
+    
+    % Loop through: Window centres
+    for w = 1:nCentres
+    
+        currentCentre = eventCentres{w};
+    
+        % Mean
+        LocalSpectra.(currentCentre).GrandAverage.SpectralPower  ...
+             = mean( LocalSpectra.(currentCentre).SpectralPower,  1, 'omitnan' );
+        LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence ...
+             = mean( LocalSpectra.(currentCentre).PhaseCoherence, 1, 'omitnan' );
+    
+        % Clean up
+        LocalSpectra.(currentCentre).GrandAverage.SpectralPower  ...
+             = squeeze( LocalSpectra.(currentCentre).GrandAverage.SpectralPower  );
+        LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence ...
+             = squeeze( LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence );
+    
+    end % for Window centres
+
+
+end % Imputation
 
 
 %% Location naming
