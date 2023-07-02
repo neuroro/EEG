@@ -35,4 +35,4 @@ King, R. (2023). functionName [MATLAB code]. GitHub. https://github.com/neuroro/
 
 King, R. (2023). EEG [GitHub repository]. GitHub. https://github.com/neuroro/EEG
 
-Updated Sat 1st July 2023
+Updated Sun 2nd July 2023
