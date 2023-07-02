@@ -26,7 +26,7 @@ Monte Carlo custer permutation tests with cluster formation and a distance funct
 Plot line graphs with shading representing the standard error of the mean and optional shading for a sub-domain window (an ERP components or frequency band, for example) using plotShadedLine.m
 
 
-#
+# Me
 Rohan O. C. King, @neuroro
 
 I hope my code finds use; if you use it please cite the function or the repository, for example in APA as, respectively:
