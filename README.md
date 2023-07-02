@@ -18,11 +18,12 @@ Calculate descriptive statistics on any numeric array using descriptiveStatistic
 # Coming soon...
 
 Monte Carlo permutation test of paired data
+
 Monte Carlo permutation test of unpaired data
 
 Monte Carlo custer permutation tests with cluster formation and a distance function
 
-Plot line graphs with shading representing the standard error of the mean and optional shading for a sub-domain window (for ERP components or frequency bands, for example) using plotShadedLine.m
+Plot line graphs with shading representing the standard error of the mean and optional shading for a sub-domain window (an ERP components or frequency band, for example) using plotShadedLine.m
 
 
 #
