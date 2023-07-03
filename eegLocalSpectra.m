@@ -14,14 +14,13 @@ function eegLocalSpectra( channels, imputation )
 % Set the Current Folder to the location of the datasets or the base folder
 %
 % Function:
-% >> eegLocalSpectra( channels )
-%
+% >> eegLocalSpectra( channels, imputation )
 % Examples:
 % >> eegLocalSpectra()
 % >> eegLocalSpectra( 6 )
 % >> eegLocalSpectra( 'FCz' )
 % >> eegLocalSpectra( [5 6 11 12] )
-% >> eegLocalSpectra( { 'Fz' 'FCz' 'F1' 'F2' } )
+% >> eegLocalSpectra( { 'Fz' 'FCz' 'F1' 'F2' }, 10 )
 %
 % Inputs:
 %   channels:   Extract event-related spectra from a channel name or index;
