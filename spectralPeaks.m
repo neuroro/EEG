@@ -16,7 +16,7 @@ spectralPeaks( fileNamePart, method, frequencyBand, timeLimit, peakSize )
 %
 % • Usage •
 % -------------------------------------------------------------------------
-% >> spectralPeaks( fileName, method, frequencyBand, timeLimit, peakSize )
+% >> spectralPeaks( fileNamePart, method, frequencyBand, timeLimit, peakSize )
 %
 % Inputs:
 %   fileNamePart:  Name of the localised time-frequency decomposition .mat
@@ -24,10 +24,10 @@ spectralPeaks( fileNamePart, method, frequencyBand, timeLimit, peakSize )
 %                    of the file name, for example 'FMCluster'
 %                    (optional input: default TimeFrequency*Cluster.mat)
 %   method:        Peak finding method
-%                    'localmax' (joint) local maximum with max prominence
-%                    'localmin' (joint) local minimum with max prominence
-%                    'maxall'   max of the max across times per frequency
-%                    'minall'   min of the min across times per frequency
+%                    'localmax' local maximum with max prominence in 2-D
+%                    'localmin' local minimum with max prominence in 2-D
+%                    'max'      max of the max across times per frequency
+%                    'min'      min of the min across times per frequency
 %                    (optional input: default local maxima)
 %   frequencyBand: Frequency band to extract peaks from as frequency limits
 %                    [f1 f2] in Hz or as pre-set named frequency bands
@@ -171,9 +171,9 @@ eventCentres = fieldnames( LocalSpectra );
 nCentres     = length( eventCentres );
 
 % Time-frequency metrics
-localFields  = fieldnames( LocalSpectra.(eventCentres{1}) );
-iGrand       = contains( localFields, 'Grand' );
-metrics      = localFields(~iGrand);
+grandFields  = fieldnames( LocalSpectra.(eventCentres{1}).GrandAverage );
+iNotMetrics  = contains( grandFields, { 'Dimension' 'Unit' }, 'IgnoreCase', true );
+metrics      = grandFields(~iNotMetrics);
 nMetrics     = length( metrics );
 
 % Conditions
@@ -232,16 +232,14 @@ disp( char( metrics ) )
 disp( ' ' )
 disp( '• Oscillatory peaks or sinks •' )
 disp( '-------------------------------------------------------------------------' )
-disp( [ 'Extrema are extracted within frequencies of ' num2str( frequencyBand(1) ) ' - ' num2str( frequencyBand(2) ) ' Hz'] )
+disp( [ extremum 's are extracted within frequencies of ' num2str( frequencyBand(1) ) ' - ' num2str( frequencyBand(2) ) ' Hz'] )
 disp( 'Times in ms are limited per window centre in order' )
 disp( num2str( timeLimits ) )
 if contains( method, 'local' )
     if ~minima
-        disp( 'Peaks are joint local maxima (across both frequencies and times)' )
-        disp( 'with the largest joint prominence' )
+        disp( 'Peaks are 2-D joint local maxima with the largest joint prominence' )
     else
-        disp( 'Sinks are joint local minima (across both frequencies and times)' )
-        disp( 'with the largest joint prominence' )
+        disp( 'Sinks are 2-D joint local minima with the largest joint prominence' )
     end
 else
     if ~minima
@@ -347,8 +345,7 @@ for w = 1:nCentres
                     timeFrequencyWindow = -timeFrequencyWindow;
                 end
 
-                % Most prominent local maximum across frequencies x times
-                % Most prominent joint local minimum 
+                % Most prominent local maximum across frequencies and times
                 % ---------------------------------------------------------
                 if contains( method, 'local' )
 
@@ -356,21 +353,23 @@ for w = 1:nCentres
                     [ fLocalMaxima, fProminences ] = islocalmax( timeFrequencyWindow, 1 );
                     [ tLocalMaxima, tProminences ] = islocalmax( timeFrequencyWindow, 2 );
 
-                    % Frequency tolerance
-                    %   0-2 frequencies depending on the frequency resolution
+                    % Frequency jointness tolerance
+                    %   0-3 frequencies on either side of the max are
+                    %   considered joint depending on frequency resolution 
                     fTolerance1 = 0;
-                    fTolerance2 = 2;
+                    fTolerance2 = 3;
                     fTolerance  = max( fTolerance1, round( nFrequencies*0.05 ) );
                     fTolerance  = min( fTolerance2, fTolerance );
 
-                    % Time tolerance
-                    %   1-3 samples depending on the sampling rate
+                    % Time jointness tolerance
+                    %   2-4 samples on either side of the max are
+                    %   considered joint depending on the sampling rate
                     if timesLimited(2) - timesLimited(1) < 1      % > 1000 Hz
-                        tTolerance = 3;
+                        tTolerance = 4;
                     elseif timesLimited(2) - timesLimited(1) == 1 % = 1000 Hz
-                        tTolerance = 2;
+                        tTolerance = 3;
                     elseif timesLimited(2) - timesLimited(1) > 1  % < 1000 Hz
-                        tTolerance = 1;
+                        tTolerance = 2;
                     end
 
                     % Joint local maxima across frequencies and times with
@@ -413,16 +412,74 @@ for w = 1:nCentres
                         end
                     end
 
-                    % Sanity check
+                    % No joint local maximum anywhere
                     if ~any( localMaxima, 'all' )
-                        disp( [ '[' 8 'Warning: No joint local maximum for participant ' num2str(p) ' condition ' num2str(c) ']' 8 ] )
+
+                        % Warning
+                        if ~minima
+                            minOrMax = 'maximum';
+                        else
+                            minOrMax = 'minimum';
+                        end
+                        disp( [ '[' 8 'Warning: No local ' minOrMax ' in ' currentMetric ' found jointly in 2-D'         ']' 8 ] )
+                        disp( [ '[' 8 'for the ' iptnum2ordinal(p) ' participant in the ' iptnum2ordinal(p) ' condition' ']' 8 ] )
+                        disp( [ '[' 8 'Increasing the neighbourhood aroud each ' minOrMax ' considered singularly joint' ']' 8 ] )
+                        disp( ' ' )
+
+                        % Double the tolerances
+                        fTolerance = fTolerance * 2;
+                        tTolerance = tTolerance * 2;
+
+                        % Loop through: Frequencies and times (again)
+                        for f = 1:nFrequencies
+                            for t = 1:nTimes
+    
+                                % Test if the current time-frequency point
+                                % is locally maximal in time and frequency 
+                                if fLocalMaxima(f,t) || tLocalMaxima(f,t)
+    
+                                    % Tolerated frequency indices
+                                    fRange1 = max( f - fTolerance, 1 );
+                                    fRange2 = min( f + fTolerance, nFrequencies );
+                                    fRange  = fRange1:fRange2;
+    
+                                    % Tolerated time indices
+                                    tRange1 = max( t - tTolerance, 1 );
+                                    tRange2 = min( t + tTolerance, nTimes );
+                                    tRange  = tRange1:tRange2;
+    
+                                    % Tolerated window around the current
+                                    % local maximum to be considered joint
+                                    fWindow = fLocalMaxima(fRange,tRange);
+                                    tWindow = tLocalMaxima(fRange,tRange);
+    
+                                    % Test if the current local maximum is
+                                    % a joint time-frequency local maximum
+                                    if any( fWindow, 'all' ) && any( tWindow, 'all' )
+                                        localMaxima(f,t) = true;
+                                    end
+    
+                                end
+    
+                            end
+                        end
+
+                    end % if No joint local maxima
+
+                    % Still no joint local maximum anywhere
+                    if ~any( localMaxima, 'all' )
+                        disp( [ '[' 8 'Warning: Still no local ' minOrMax ' in ' currentMetric ' found jointly in 2-D'   ']' 8 ] )
+                        disp( [ '[' 8 'for the ' iptnum2ordinal(p) ' participant in the ' iptnum2ordinal(p) ' condition' ']' 8 ] )
+                        disp( [ '[' 8 'Using 1-D local ' minOrMax(1:5) 'a across times instead, for this case'           ']' 8 ] )
+                        disp( ' ' )
+                        localMaxima = tLocalMaxima;
                     end
 
-                    % Joint prominences
-                    prominences     = fProminences + tProminences;
+                    % Joint geometric mean prominences
+                    prominences     = sqrt( fProminences .* tProminences );
                     prominentMaxima = prominences .* localMaxima;
 
-                    % Most prominent local maximum (joint sum)
+                    % Most prominent local maximum
                     maxProminent    = max( prominentMaxima, [], 'all', 'omitnan' ); % max will give the first of multiple equal max values
                     iLocalMaximum   = prominentMaxima == maxProminent;
 
@@ -430,19 +487,19 @@ for w = 1:nCentres
                     % Multiple equally jointly prominent maxima
                     % -----------------------------------------------------
 
-                    % Most prominent (joint geometric mean)
+                    % Most prominent joint sum
                     if sum( iLocalMaximum, 'all' ) > 1
                         iLocalMaximumS  = iLocalMaximum;
-                        prominences     = sqrt( fProminences .* tProminences );
+                        prominences     = fProminences + tProminences;
                         prominentMaxima = prominences .* localMaxima;
                         maxProminent    = max( prominentMaxima, [], 'all', 'omitnan' );
                         iLocalMaximum   = prominentMaxima == maxProminent;
                     end
                     
-                    % Most powerful (joint sum)
+                    % Most powerful
                     if sum( iLocalMaximum, 'all' ) > 1
                         localMaxPower   = timeFrequencyWindow(iLocalMaximumS);
-                        [ ~, iMax ]     = max( localMaxPower, [], 'omitnan' );
+                        [ ~, iMax ]     = max( localMaxPower, [], 'omitnan' ); % max will give the first of multiple equal max values
                         iLocalMaximum   = iLocalMaximumS(iMax);
                     end
 
@@ -462,11 +519,11 @@ for w = 1:nCentres
 
                 % Maximum of the maximum across times per frequency
                 % ---------------------------------------------------------
-                elseif contains( method, 'max' ) && ~contains( method, 'local' )
+                elseif contains( method, { 'max' 'min' } ) && ~contains( method, 'local' )
 
                     % Pre-allocate
-                    outputPeaks      = NaN( 1, nFrequencies ); % Peak value for each frequency
-                    iTimePeaks = NaN( 1, nFrequencies ); % Time index of the peak at each frequency
+                    outputPeaks = NaN( 1, nFrequencies ); % Peak value for each frequency
+                    iTimePeaks  = NaN( 1, nFrequencies ); % Time index of the peak at each frequency
 
                     % Loop through: Frequencies in the frequency band
                     for f = 1:nFrequencies
@@ -528,6 +585,19 @@ for w = 1:nCentres
                     peak   = -peak;
                 end
 
+                % Sanity check: Non-numeric peak or sink
+                if isnan( peak )
+                    disp( [ '[' 8 '•••••••••••••••••••••••••' ']' 8 ] )
+                    disp( [ '[' 8 '•      •         •      •' ']' 8 ] )
+                    disp( [ '[' 8 '•  :(  •  ERROR  •  :(  •' ']' 8 ] )
+                    disp( [ '[' 8 '•      •         •      •' ']' 8 ] )
+                    disp( [ '[' 8 '•••••••••••••••••••••••••' ']' 8 ] )
+                    disp( [ '[' 8 measures{m} ' not-a-number' ']' 8 ] )
+                    disp( [ '[' 8 'For the ' iptnum2ordinal(p) ' participant' ']' 8 ] )
+                    disp( [ '[' 8 'In the ' iptnum2ordinal(p) ' condition'    ']' 8 ] )
+                    disp( ' ' )
+                end
+
 
                 %% Store in struct
                 % ---------------------------------------------------------
@@ -558,10 +628,11 @@ for w = 1:nCentres
         % Export a comma separated matrix for each enumerated dimension of
         % the peak or sink of each oscillatory metric in each window centre
         for d = 1:length( peakFields )
+            currentDimension   = peakFields{d};
             if d == 1
                 currentMeasure = measures{m};
             else
-                currentMeasure = peakFields{d};
+                currentMeasure = currentDimension;
             end
             outputPeaks        = SpectralPeaks.(currentCentre).(currentMetric).(currentDimension);
             outputFileName     = [ cluster bandName currentMeasure currentCentre 'Related' currentMetric '.csv' ];

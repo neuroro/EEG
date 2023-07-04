@@ -15,6 +15,7 @@ function eegLocalSpectra( channels, imputation )
 %
 % Function:
 % >> eegLocalSpectra( channels, imputation )
+%
 % Examples:
 % >> eegLocalSpectra()
 % >> eegLocalSpectra( 6 )
@@ -96,26 +97,26 @@ end
 % -------------------------------------------------------------------------
 
 % Wildcard file name
-aWildDataset     = 'TimeFrequencyData*.mat';
+aWildDataset    = 'TimeFrequencyData*.mat';
 
 % Search for all datasets named in common located in the Current Folder and
 % sub-folders of the Current Folder
-fileStruct       = dir( [ '**/' aWildDataset ] );
-nFiles           = length( fileStruct );
-fileList         = { fileStruct(:).name   };
-folderList       = { fileStruct(:).folder };
+fileStruct      = dir( [ '**/' aWildDataset ] );
+nFiles          = length( fileStruct );
+fileList        = { fileStruct(:).name   };
+folderList      = { fileStruct(:).folder };
 
 
 %% Determine participants and conditions represented by the .mat files
 % -------------------------------------------------------------------------
 
 % Pre-allocate
-participantList  = {}; % Participant number files list
-participants     = []; % Unique participant numbers
-iParticipant     = 0;
-conditionList    = {}; % Condition files list
-conditions       = {}; % Unique conditions
-iCondition       = 0;
+participantList = {}; % Participant number files list
+participants    = []; % Unique participant numbers
+iParticipant    = 0;
+conditionList   = {}; % Condition files list
+conditions      = {}; % Unique conditions
+iCondition      = 0;
 
 % Loop through: Files
 for f = 1:nFiles
@@ -139,7 +140,7 @@ for f = 1:nFiles
     if ~any( strcmp( participantList, participantNumber ) )
 
         % Current index in the participant number list
-        iParticipant               = iParticipant + 1;
+        iParticipant = iParticipant + 1;
 
         % Add current participant number to the list if not already included
         participants(iParticipant) = str2double( participantNumber );                               %#ok
@@ -157,7 +158,7 @@ for f = 1:nFiles
     if ~any( strcmp( conditionList, currentCondition ) )
 
         % Current index in the condition list
-        iCondition             = iCondition + 1;
+        iCondition = iCondition + 1;
 
         % Add current condition to the list given not already included
         conditions{iCondition} = currentCondition;                                                  %#ok
@@ -299,10 +300,10 @@ clear Decomposition
 impute = false;
 for w = 1:nCentres
     LocalSpectra.(eventCentres{w}).SpectralPower            = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
-    LocalSpectra.(eventCentres{w}).SpectralPowerUnits       = 'dB relative to baseline (mean spectrum)';
+    LocalSpectra.(eventCentres{w}).SpectralPowerUnits       = 'Decibels relative to baseline (mean spectrum)';
     LocalSpectra.(eventCentres{w}).SpectralPowerDimensions  = 'Participants x Conditions x Frequencies x Times';
     LocalSpectra.(eventCentres{w}).PhaseCoherence           = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
-    LocalSpectra.(eventCentres{w}).PhaseCoherenceUnits      = 'Proportion of phase alignment';
+    LocalSpectra.(eventCentres{w}).PhaseCoherenceUnits      = 'Phase alignment proportion';
     LocalSpectra.(eventCentres{w}).PhaseCoherenceDimensions = 'Participants x Conditions x Frequencies x Times';
 end
 
@@ -404,13 +405,13 @@ for w = 1:nCentres
     % Spectral Power
     LocalSpectra.(currentCentre).GrandAverage.SpectralPower  ...
          = mean( LocalSpectra.(currentCentre).SpectralPower,  1, 'omitnan' );
-    LocalSpectra.(currentCentre).GrandAverage.SpectralPowerunits       = 'dB relative to baseline (mean spectrum)';
+    LocalSpectra.(currentCentre).GrandAverage.SpectralPowerUnits       = 'Decibels relative to baseline (mean spectrum)';
     LocalSpectra.(currentCentre).GrandAverage.SpectralPowerDimensions  = 'Conditions x Frequencies x Times';
 
     % Phase Coherence
     LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence ...
          = mean( LocalSpectra.(currentCentre).PhaseCoherence, 1, 'omitnan' );
-    LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceUnits      = 'Proportion of phase alignment';
+    LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceUnits      = 'Phase alignment proportion';
     LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceDimensions = 'Conditions x Frequencies x Times';
 
     % Clean up
@@ -436,8 +437,8 @@ if impute
     
             % Affected participant and condition indices in LocalSpectra
             % for the current file
-            iParticipant  = Imputations(f).ParticipantIndex;
-            iCondition    = Imputations(f).ConditionIndex;
+            iParticipant = Imputations(f).ParticipantIndex;
+            iCondition   = Imputations(f).ConditionIndex;
     
             % Loop through: Event-related windows
             for w = 1:nCentres
@@ -507,6 +508,8 @@ POz = 'POz';
 Oz  = 'Oz';
 P7  = 'P7';
 P8  = 'P8';
+PO7 = 'PO7';
+PO8 = 'PO8';
 
 % EGI channels
 if any( contains( { ChannelCoordinates(:).labels }, 'E' ) )
@@ -516,6 +519,10 @@ if any( contains( { ChannelCoordinates(:).labels }, 'E' ) )
     Pz  = 'E62';
     POz = 'E72';
     Oz  = 'E75';
+    P7  = 'E58';
+    P8  = 'E96';
+    PO7 = 'E65';
+    PO8 = 'E90';
 end
 
 % Important channel indices
@@ -527,6 +534,8 @@ iPOz = find( strcmp( { ChannelCoordinates(:).labels }, POz ) );
 iOz  = find( strcmp( { ChannelCoordinates(:).labels }, Oz  ) );
 iP7  = find( strcmp( { ChannelCoordinates(:).labels }, P7  ) );
 iP8  = find( strcmp( { ChannelCoordinates(:).labels }, P8  ) );
+iPO7 = find( strcmp( { ChannelCoordinates(:).labels }, PO7 ) );
+iPO8 = find( strcmp( { ChannelCoordinates(:).labels }, PO8 ) );
 
 % Cluster of electrodes name
 if length( channels ) > 1 || ( isempty( channels ) && length( iChannelSet ) <= 7 )
@@ -535,44 +544,47 @@ if length( channels ) > 1 || ( isempty( channels ) && length( iChannelSet ) <= 7
 
     % Frontal midline cluster including FCz & Fz
     if any( iSelectedChannels == iFCz ) && any( iSelectedChannels == iFz )
-
-        locationName = 'FMCluster';
+        locationName = 'FMidCluster';
 
     % Frontal midline cluster including FCz
     elseif any( iSelectedChannels == iFCz ) && ~any( iSelectedChannels == iFz )
         locationName = 'FCzCluster';
 
     % Frontal midline cluster including Fz
-    elseif ~any( iSelectedChannels == iFCz ) && any( iSelectedChannels == iFz )
+    elseif any( iSelectedChannels == iFz ) && ~any( iSelectedChannels == iFCz )
         locationName = 'FzCluster';
 
-    % Parietal cluster including Pz & CPz
+    % Parietal midline cluster including Pz & CPz
     elseif any( iSelectedChannels == iPz ) && ~any( iSelectedChannels == iCPz )
-        locationName = 'PcMCluster';
+        locationName = 'PcMidCluster';
 
-    % Parietal cluster including Pz
+    % Parietal midline cluster including Pz
     elseif any( iSelectedChannels == iPz ) && ~any( iSelectedChannels == iCPz ) && ~any( iSelectedChannels == iPOz )
         locationName = 'PzCluster';
 
-    % Parietal cluster including Pz & POz
+    % Parietal midline cluster including Pz & POz
     elseif any( iSelectedChannels == iPz ) && any( iSelectedChannels == iPOz )
-        locationName = 'PoMCluster';
+        locationName = 'PoMidCluster';
 
-    % Occipitoparietal cluster including POz
+    % Occipitoparietal midline cluster including POz
     elseif any( iSelectedChannels == iPOz ) && ~any( iSelectedChannels == iPz ) && ~any( iSelectedChannels == iOz )
         locationName = 'POzCluster';
 
-    % Occipital cluster including Oz & POz
+    % Occipital midline cluster including Oz & POz
     elseif any( iSelectedChannels == iOz ) && any( iSelectedChannels == iPOz )
-        locationName = 'OpMCluster';
+        locationName = 'OMidCluster';
 
-    % Occipital cluster including Oz
+    % Occipital midline cluster including Oz
     elseif any( iSelectedChannels == iOz ) && ~any( iSelectedChannels == iPOz )
         locationName = 'OzCluster';
 
     % Bilateral parietal cluster including P7 & P8
     elseif any( iSelectedChannels == iP7 ) && any( iSelectedChannels == iP8 )
-        locationName = 'BiPCluster';
+        locationName = 'PBiCluster';
+
+    % Occipitoparietal bilateral cluster including PO7 & PO8
+    elseif any( iSelectedChannels == iPO7 ) && any( iSelectedChannels == iPO8 )
+        locationName = 'OPBiCluster';
 
     % Individual electrodes named Channel1Channel2...ChannelN
     else
