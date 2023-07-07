@@ -23,7 +23,7 @@ Monte Carlo permutation test of unpaired data
 
 Monte Carlo custer permutation tests with cluster formation and a distance function
 
-Plot line graphs with shading representing the standard error of the mean and optional shading for a sub-domain window (an ERP components or frequency band, for example) using plotShadedLine.m
+Plot line graphs with shading representing the standard error of the mean and optional shading for a sub-domain window (an ERP component or frequency band, for example) using plotShadedLine.m
 
 
 # Me
@@ -35,4 +35,4 @@ King, R. (2023). functionName [MATLAB code]. GitHub. https://github.com/neuroro/
 
 King, R. (2023). EEG [GitHub repository]. GitHub. https://github.com/neuroro/EEG
 
-Updated Sun 2nd July 2023
+Updated Sat 8th July 2023
