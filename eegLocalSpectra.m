@@ -312,7 +312,7 @@ clear Decomposition
 
 % Pre-allocate
 impute = false;
-Imputations(nFiles).FullFilePath         = [];
+Imputations(nFiles).File                 = [];
 Imputations(nFiles).AffectedEventWindows = [];
 Imputations(nFiles).ParticipantIndex     = [];
 Imputations(nFiles).ConditionIndex       = [];
