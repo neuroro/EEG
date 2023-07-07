@@ -312,10 +312,10 @@ clear Decomposition
 
 % Pre-allocate
 impute = false;
-Imputations(N).FullFilePath         = [];
-Imputations(N).AffectedEventWindows = [];
-Imputations(N).ParticipantIndex     = [];
-Imputations(N).ConditionIndex       = [];
+Imputations(nFiles).FullFilePath         = [];
+Imputations(nFiles).AffectedEventWindows = [];
+Imputations(nFiles).ParticipantIndex     = [];
+Imputations(nFiles).ConditionIndex       = [];
 for w = 1:nCentres
     LocalSpectra.(eventCentres{w}).SpectralPower            = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
     LocalSpectra.(eventCentres{w}).SpectralPowerUnits       = 'Decibels relative to baseline (mean spectrum)';
