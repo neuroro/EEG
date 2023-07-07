@@ -32,7 +32,7 @@ spectralPeaks( fileNamePart, method, frequencyBand, timeLimit, peakSize )
 %   frequencyBand: Frequency band to extract peaks from as frequency limits
 %                    [f1 f2] in Hz or as pre-set named frequency bands
 %                    'delta', 'theta', 'theta+', 'alpha', 'beta', 'gamma'
-%                    (optional input: default 2-10 Hz)
+%                    (optional input: default 2.5-8.5 Hz)
 %   timeLimit:     Time limit or limits (in ms) within which to extract
 %                    peaks or sinks as a single reference time limit from 
 %                    which the rest are calculated or as a matrix of time 
@@ -49,7 +49,7 @@ spectralPeaks( fileNamePart, method, frequencyBand, timeLimit, peakSize )
 % Examples:
 % >> spectralPeaks
 % >> spectralPeaks( 'FMCluster' )
-% >> spectralPeaks( '', 'localmax', [2 10], 600 )
+% >> spectralPeaks( '', 'localmax', [2.5 8.5], 600 )
 % >> spectralPeaks( '', 'min', 'alpha', [-300 200; 100 600] )
 % >> spectralPeaks( '', '', '', 0, [1.5 20] )
 %
@@ -697,11 +697,11 @@ end
 function [ frequencyLimits, bandName ] = aprioriFrequencyBands( frequencyBand )
 
 % Frequency band names
-delta     = { 'Delta' 'delta' 'd' };
-theta     = { 'Theta' 'theta' 't' };
-alpha     = { 'Alpha' 'alpha' 'a' };
-beta      = { 'Beta'  'beta'  'b' };
-gamma     = { 'Gamma' 'gamma' 'g' };
+delta     = { 'Delta' 'D' };
+theta     = { 'Theta' 'T' };
+alpha     = { 'Alpha' 'A' };
+beta      = { 'Beta'  'B' };
+gamma     = { 'Gamma' 'G' };
 
 % Organisation for Human Brain Mapping definitions (Pernet et al., 2018)
 deltaBand = [ 1       3.999  ];
@@ -710,31 +710,38 @@ alphaBand = [ 8       12.999 ];
 betaBand  = [ 13      30     ];
 gammaBand = [ 30.001  80     ];
 
+% Extended theta peak finding window
+thetaWide = { 'ThetaExtended' 'ThetaWide' 'ThetaPlus' 'Theta+' 'TE' 'TW' 'T+' };
+thetaPFW  = [ 2.5 8.5 ];
+
 % Gyurkovics and Levita (2021) theta peak finding window
-thetaPlus = { 'ThetaPlus' 'Theta+' 'theta+' 'tp' 'tw' };
-thetaWide = [ 2 10 ];
+thetaGL   = { 'ThetaGyurkovicsLevita' 'ThetaGL' 'GL' };
+thetaGLW  = [ 2 10 ];
 
 % Frequency limits
 if ischar( frequencyBand )
-    switch frequencyBand
-        case delta
+    switch lower( frequencyBand )
+        case lower( delta )
             frequencyLimits = deltaBand;
             bandName        = delta{1};
-        case theta
+        case lower( theta )
             frequencyLimits = thetaBand;
             bandName        = theta{1};
-        case alpha
+        case lower( alpha )
             frequencyLimits = alphaBand;
             bandName        = alpha{1};
-        case beta
+        case lower( beta )
             frequencyLimits = betaBand;
             bandName        = beta{1};
-        case gamma
+        case lower( gamma )
             frequencyLimits = gammaBand;
             bandName        = gamma{1};
-        case thetaPlus
-            frequencyLimits = thetaWide;
-            bandName        = thetaPlus{1};
+        case lower( thetaWide )
+            frequencyLimits = thetaPFW;
+            bandName        = 'ThetaExtended';
+        case lower( thetaGL )
+            frequencyLimits = thetaGLW;
+            bandName        = 'ThetaGyurkovicsLevita';
     end
 elseif isnumeric( frequencyBand )
             frequencyLimits = frequencyBand;
