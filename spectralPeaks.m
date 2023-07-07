@@ -682,7 +682,7 @@ end % for: Event-related windows
 
 
 % Save matlab matrix
-save( [ cluster bandName extremum 's' ], '-struct', 'SpectralPeaks', '-v7.3' )
+save( [ cluster bandName extremum 's.mat' ], '-struct', 'SpectralPeaks', '-v7.3' )
 
 
 % _________________________________________________________________________
