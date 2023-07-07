@@ -37,11 +37,11 @@ spectralPeaks( fileNamePart, method, frequencyBand, timeLimit, peakSize )
 %                    peaks or sinks as a single reference time limit from 
 %                    which the rest are calculated or as a matrix of time 
 %                    limits per (semicolon-separated) event-related window 
-%                    (optional input: default 100 ms to 600 ms relative to 
-%                     the stimulus and -300 to 200 ms relative to response)
+%                    (optional input: default -300 to 200 ms relative to 
+%                     response and 75 ms to 600 ms relative to stimulus)
 %   peakSize:      Frequencies (in Hz) and times (in ms) on either
 %                    side of the peak to average across as [f t]
-%                    (optional input: default 1.5 Hz 25 ms)
+%                    (optional input: default 1.5 Hz 20 ms)
 % Outputs:
 %   Separate .csv files per metric per enumeration per event-related window
 %   and a .mat file containing all peaks or sinks data
@@ -50,8 +50,8 @@ spectralPeaks( fileNamePart, method, frequencyBand, timeLimit, peakSize )
 % >> spectralPeaks
 % >> spectralPeaks( 'FMCluster' )
 % >> spectralPeaks( '', 'localmax', [2 10], 600 )
-% >> spectralPeaks( '', 'min', 'alpha', [100 600; -300 200] )
-% >> spectralPeaks( '', '', '', 0, [1.5 25] )
+% >> spectralPeaks( '', 'min', 'alpha', [-300 200; 100 600] )
+% >> spectralPeaks( '', '', '', 0, [1.5 20] )
 %
 % • Author •
 % -------------------------------------------------------------------------
@@ -127,7 +127,7 @@ end
 
 % Peak size
 if ~exist( 'peakSize', 'var' ) || isempty( peakSize )
-    peakSize  = [2 25];
+    peakSize  = [1.5 20];
 end
 
 
@@ -205,9 +205,11 @@ nFrequencies    = length( frequenciesBand );
 % Time limits
 if isscalar( timeLimit )
     for w = 1:nCentres
-        if w == 1
-            timeLimits(w,:) = round( [ 0            timeLimit   ] );            %#ok
-        else
+        if contains( eventCentres{w}, 'Stim', 'IgnoreCase', true )
+            timeLimits(w,:) = round( [ timeLimit/8  timeLimit   ] );            %#ok
+        elseif contains( eventCentres{w}, 'Init', 'IgnoreCase', true )
+            timeLimits(w,:) = round( [ -timeLimit/2 timeLimit/2 ] );            %#ok
+        elseif contains( eventCentres{w}, 'Resp', 'IgnoreCase', true )
             timeLimits(w,:) = round( [ -timeLimit/2 timeLimit/3 ] );            %#ok
         end
     end
@@ -556,6 +558,31 @@ for w = 1:nCentres
 
 
                 end % if method
+
+
+                % Sanity check: Peak frequency outside the frequency band
+                if peakFrequency < frequenciesBand(1) || peakFrequency > frequenciesBand(end)
+                    disp( [ '[' 8 '•••••••••••••••••••••••••' ']' 8 ] )
+                    disp( [ '[' 8 '•      •         •      •' ']' 8 ] )
+                    disp( [ '[' 8 '•  :(  •  ERROR  •  :(  •' ']' 8 ] )
+                    disp( [ '[' 8 '•      •         •      •' ']' 8 ] )
+                    disp( [ '[' 8 '•••••••••••••••••••••••••' ']' 8 ] )
+                    disp( [ '[' 8 'Peak found outside ' num2str( frequenciesBand(1) ) ' Hz - ' num2str( frequenciesBand(end) ) ' Hz' ']' 8 ] )
+                    disp( [ '[' 8 'For the ' iptnum2ordinal(p) ' participant' ']' 8 ] )
+                    disp( [ '[' 8 'In the ' iptnum2ordinal(c) ' condition'    ']' 8 ] )
+                end
+
+                % Sanity check: Peak time outside the time limits
+                if peakTime < timesLimited(1) || peakTime > timesLimited(end)
+                    disp( [ '[' 8 '•••••••••••••••••••••••••' ']' 8 ] )
+                    disp( [ '[' 8 '•      •         •      •' ']' 8 ] )
+                    disp( [ '[' 8 '•  :(  •  ERROR  •  :(  •' ']' 8 ] )
+                    disp( [ '[' 8 '•      •         •      •' ']' 8 ] )
+                    disp( [ '[' 8 '•••••••••••••••••••••••••' ']' 8 ] )
+                    disp( [ '[' 8 'Peak found outside ' num2str( timesLimited(1) ) ' ms - ' num2str( timesLimited(end) ) ' ms' ']' 8 ] )
+                    disp( [ '[' 8 'For the ' iptnum2ordinal(p) ' participant' ']' 8 ] )
+                    disp( [ '[' 8 'In the ' iptnum2ordinal(c) ' condition'    ']' 8 ] )
+                end
 
 
                 %% Determine the peak window
