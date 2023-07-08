@@ -9,23 +9,32 @@ function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 %
 % • Usage •
 % -------------------------------------------------------------------------
-% Function:
 % >> plotTimeFrequency( eventRelatedSpectra, frequencies, times, ...
 %                       'OptionName1', optionValue1, 'OptionName2', optionValue2, ... )
 %
-% Examples:
+% For example:
 % >> plotTimeFrequency( eventRelatedSpectra, frequencies, times )
-% >> plotTimeFrequency( eventRelatedSpectra, frequencies, times, 'colourscale', [], 'cbar', 'off' )
+% >> plotTimeFrequency( eventRelatedSpectra, frequencies, times, 'colourscale', [], 'cmap', 'jet' )
 % >> plotTimeFrequency( squeeze(mean(Stimulus.SpectralPower,1)), Stimulus.Frequencies, Stimulus.Times )
+% >> plotTimeFrequency( squeeze(Stimulus.GrandAverage.SpectralPower(1,:,:)), Stimulus.Frequencies, Stimulus.Times )
 %
-% Inputs:
+% .. . .  .   .     .        .             .                     .                                  .                                                       .
+%
+% •••( Function Inputs )
+%
 %   eventRelatedSpectra: Time-frequency data to plot using colour values
+%
 %   frequencies:         Vector of logarithmically spaced frequencies in Hz
+%
 %   times:               Vector of time point values in milliseconds
 %
-% Optional inputs:
+% .. . .  .   .     .        .             .                     .                                  .                                                       .
+%
+% •••( 'Optional', Inputs )
+%
 %   'fticks'      Number of frequencies displayed on the y-axis
 %                   (default 10)
+%
 %   'colourscale' Scale of the colour space
 %    or 'cs'        '0' or   scale to the absolute maximum so that zero is
 %                   'abs'    a fixed colour, which is useful for comparing
@@ -38,6 +47,18 @@ function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 %                   [z1 z2]  scale from z1 to z2
 %                   (default scale to the absolute maximum 
 %                         or scale to the data if bluewhitered.m exists)
+%
+%   'colourmap'   Colour map used to draw the data by MATLAB's colormap
+%    or 'cmap'      Example pre-set colour spaces
+%                   'jet'
+%                   'parula'
+%                   'hsv'
+%                   'turbo'
+%                   Nx3 matrix of N gradients x RGB values
+%                   or
+%                   'bluewhitered' by Nathan Childress (2023) https://au.mathworks.com/matlabcentral/fileexchange/4058-bluewhitered
+%                   (default jet or bluewhitered if it exists)
+%
 %   'colourbar'   Draw a colour bar at the specified location
 %    or 'cbar'      'T'   top outside the plot box
 %                   'B'   bottom outside the plot box
@@ -45,16 +66,6 @@ function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 %                   'L'   left outside the plot box
 %                   'off' none
 %                   (default on the right)
-%   'colourmap'   Colour map used to draw the data as below
-%    or 'cmap'      Nx3 matrix of N gradients x RGB values
-%                   MATLAB pre-set colour spaces such as
-%                   'hsv'
-%                   'turbo'
-%                   'jet'
-%                   'parula'
-%                   or
-%                   'bluewhitered' by Nathan Childress (2023) https://au.mathworks.com/matlabcentral/fileexchange/4058-bluewhitered
-%                   (default jet or bluewhitered)
 %
 % • Author •
 % -------------------------------------------------------------------------
