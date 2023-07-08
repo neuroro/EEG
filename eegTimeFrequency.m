@@ -21,39 +21,48 @@ eegTimeFrequency( setName, frequencyLimits, frequencyResolution, blending )
 % Edit the configuration of the EEG data in the code
 % Set the Current Folder to the location of the datasets or the base folder
 %
-% Function:
 % >> eegTimeFrequency( setName, frequencyLimits, frequencyResolution, blending )
 %
-% Examples:
+% For example:
 % >> eegTimeFrequency( 'Memory' )
 % >> eegTimeFrequency( 'Memory', [ 2 30 ], 30, 'sigmoid' )
 % >> eegTimeFrequency( 'Memory', [], 0, 'median' )
 %
-% Inputs:
-%   setName:             Part of the file name that is common to all the 
-%                        EEGLAB datasets to be decomposed that are located 
-%                        in the Current Folder and sub-folders of the
-%                        Current Folder, for example 'Memory' or ''
-%                          (optional input, default all datasets)
-%   frequencyLimits:     Frequencies in Hz to extract as [minimum maximum]
-%                          (optional input, default [2 30])
-%   frequencyResolution: Frequencies per octave
-%                          (optional input, default 30)
-%   blending:            Blend the edges of variable-length trials using a 
-%                        'sigmoid' taper to 0 dB centred around adjacent 
-%                        events or a 'median' filter then Gaussian blur of
-%                        the time points with trial dropout
-%                          (optional input, default sigmoid blending)
+%  <-- - -  -   -     -        -             -        -     -   -  - - -->
 %
-% Output:
+% •••( Function Inputs )
+%
+%   setName:             Part of the file name that is common to all the 
+%                         EEGLAB datasets to be decomposed that are located 
+%                         in the Current Folder and sub-folders of the
+%                         Current Folder, for example 'Memory' or ''
+%                         (optional input, default all datasets)
+%
+%   frequencyLimits:     Frequencies in Hz to extract as [minimum maximum]
+%                         (optional input, default [2 30])
+%
+%   frequencyResolution: Frequencies per octave
+%                         (optional input, default 30)
+%
+%   blending:            Blend the edges of variable-length trials using a 
+%                         'sigmoid' taper to 0 dB centred around adjacent 
+%                         events or a 'median' filter then Gaussian blur of
+%                         the time points with trial dropout
+%                         (optional input, default sigmoid blending)
+%
+% [ Function Output ] = 
+%
 %   TimeFrequencyDataP<number><condition>.mat files containing data centred
 %   on the stimulus and data centred on the response for each participant
 %   and each condition, from which a localised decomposition can then be
 %   extracted using eegLocalSpectra.m
 %
-% • Requires •
-% -------------------------------------------------------------------------
-% waveletTransform.m and spectralBlender.m by Rohan King
+%  <-- - -  -   -     -        -             -        -     -   -  - - -->
+%
+% !!! Requires !!!
+% 
+% waveletTransform.m by Rohan King (2023) https://github.com/neuroro/EEG/blob/main/waveletTransform.m
+% spectralBlender.m  by Rohan King (2023) https://github.com/neuroro/EEG/blob/main/spectralBlender.m
 % EEGLAB
 %
 % • Author •
