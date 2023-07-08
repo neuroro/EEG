@@ -213,21 +213,21 @@ end
 
 % Spectral power units and baseline correction
 try
-    spectralPowerUnits     = Decomposition.(eventCentres{1}).SpectralPowerUnits;
+    spectralPowerUnits = Decomposition.(eventCentres{1}).SpectralPowerUnits;
 catch
     try
-        oneWave            = squeeze( Decomposition.Stimulus.Coefficients(:,1,1,:) ); % All trials
-        onePower           = squeeze( Decomposition.Stimulus.SpectralPower(1,1,:) );
+        oneWave   = squeeze( Decomposition.Stimulus.Coefficients(:,1,1,:) ); % All trials
+        onePower  = squeeze( Decomposition.Stimulus.SpectralPower(1,1,:) );
     catch
-        oneWave            = squeeze( Decomposition.(eventCentres{1}).Coefficients(:,1,1,:) ); % All trials
-        onePower           = squeeze( Decomposition.(eventCentres{1}).SpectralPower(1,1,:) );
+        oneWave   = squeeze( Decomposition.(eventCentres{1}).Coefficients(:,1,1,:) ); % All trials
+        onePower  = squeeze( Decomposition.(eventCentres{1}).SpectralPower(1,1,:) );
     end
-    oneWavePower           = squeeze( mean( 10*log10( oneWave .* conj( oneWave ) ), 1, 'omitnan' ) );
-    maximumPower           = max( onePower, [], 'all', 'omitnan' );
-    meanAbsolutePower      = mean( abs( onePower ), 'all', 'omitnan' );
-    oneDifference          = mean( abs( oneWavePower - onePower ), 'all', 'omitnan' );
+    oneWavePower  = squeeze( mean( 10*log10( oneWave .* conj( oneWave ) ), 1, 'omitnan' ) );
+    maximumPower  = max( onePower, [], 'all', 'omitnan' );
+    meanAbsPower  = mean( abs( onePower ), 'all', 'omitnan' );
+    oneDifference = mean( abs( oneWavePower - onePower ), 'all', 'omitnan' );
 %     disp( [ num2str( oneDifference ) ' decibel mean absolute difference between wavelet power and spectral power' ] )
-    if oneDifference > maximumPower && oneDifference > meanAbsolutePower
+    if oneDifference > maximumPower && oneDifference > meanAbsPower
         disp( [ '[' 8 'Baseline correction assumed from mean absolute power difference' ']' 8 ] )
         spectralPowerUnits = 'Decibels relative to baseline (mean spectrum)';
     else

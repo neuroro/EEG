@@ -48,13 +48,13 @@ spectralPeaks( fileNamePart, method, frequencyBand, timeLimit, peakSize )
 %                   within which to find peaks or sinks
 %                    'Delta'     1 to <4 Hz
 %                    'Theta'     4 to <8 Hz
-%                    'Theta+'  2.5 to 8.5 Hz
-%                    'ThetaGL'   2 to 10 Hz
+%                    'ThetaX'  2.5 to 8.5 Hz
+%                    'Theta++'   2 to 10 Hz
 %                    'Alpha'     8 to <13 Hz
 %                    'Beta'     13 to 30 Hz
 %                    'Gamma'   >30 to 80 Hz
 %                    [f1 f2]    f1 to f2 Hz frequency range
-%                   (optional input: default Theta+ 2.5-8.5 Hz)
+%                   (optional input: default theta extended to 2.5-8.5 Hz)
 %
 %   timeLimit:     Time limit or limits (in ms) to find peaks within as a
 %                   scalar of the maximum time for stimulus-related spectra
@@ -122,7 +122,7 @@ disp( ' ' )
 
 % Local decomposition
 if ~exist( 'fileNamePart', 'var' ) || isempty( fileNamePart )
-    fileNamePart = 'TimeFrequency*Cluster';
+    fileNamePart = 'Cluster';
 end
 if ~ischar( fileNamePart )
     fileNamePart = char( fileNamePart ); % Convert to character if needed
@@ -143,7 +143,7 @@ end
 
 % Frequency band
 if ~exist( 'frequencyBand', 'var' ) || isempty( frequencyBand )
-    frequencyBand = 'Theta+';
+    frequencyBand = 'ThetaExtended';
 end
 if isstring( frequencyBand )
     frequencyBand = char( frequencyBand );
@@ -164,7 +164,7 @@ end
 % -------------------------------------------------------------------------
 
 % Wildcard file name
-wildSpectra  = [ '*' fileNamePart '*.mat' ];
+wildSpectra  = [ '*TimeFrequency*' fileNamePart '*.mat' ];
 
 % Search for fileName.mat files named in common located in the Current
 % Folder and sub-folders of the Current Folder
@@ -776,7 +776,7 @@ betaBand   = [ 13      30     ];
 gammaBand  = [ 30.001  80     ];
 
 % Extended theta peak finding window
-thetaExt   = { 'ThetaExtended' 'ThetaExt' 'ThetaX' 'Thex' 'Tx' };
+thetaExt   = { 'ThetaExtended' 'ThetaEx' 'ThetaX' 'Thex' 'Tx' };
 thetaExtF  = [ 2.5 8.5 ];
 
 % 2-10 Hz theta++ peak finding window (Gyurkovics & Levita, 2021) 

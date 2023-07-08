@@ -462,11 +462,24 @@ for n = 1:nFiles
 
                     % No baseline
                     if ~baselineLimit(1) || isempty( baselineLimit ) || isempty( baseline )
-                        baseline   = 1;
+                        baseline   = ones( nFrequencies, 1 );
                     end
 
+                    % Convert baseline power to dB across the window
+                    baselinePower  = 10*log10( baseline );
+                    baseline       = repmat( baselinePower, 1, length( spectralPower ) );
+
                     % Convert power to dB relative to baseline
-                    spectralPower  = 10*log10( spectralPower ./ baseline );
+                    spectralPower  = 10*log10( spectralPower );
+                    spectralPower  = spectralPower - baseline;
+
+                    % Units
+                    if baselineLimit(1)
+                        powerUnits = 'Decibels relative to baseline (mean spectrum)';
+                    else
+                        powerUnits = 'Decibel volts^2';
+                    end
+                    coherenceUnits = 'Phase alignment proportion';
 
                     % Times (in ms)
                     %   Input signal indices -> output time points in ms
@@ -555,12 +568,21 @@ for n = 1:nFiles
 
                         % Store in struct
                         Decomposition.(trialCentre).SpectralPower(trial,ch,:,:)  = powerWindow;
+                        Decomposition.(trialCentre).SpectralPowerUnits           = powerUnits;
+                        Decomposition.(trialCentre).SpectralPowerDimensions      = 'Channels x Frequencies x Times'; % As it will be after averaging
                         Decomposition.(trialCentre).PhaseDirection(trial,ch,:,:) = phaseWindow;
                         Decomposition.(trialCentre).Coefficients(trial,ch,:,:)   = wavesWindow;
-                        Decomposition.(trialCentre).Frequencies         = frequencies;
-                        Decomposition.(trialCentre).Times               = centreDomain;
-                        Decomposition.(trialCentre).Channels            = channels;
-                        Decomposition.(trialCentre).BlendTimes(trial,:) = blenderTime - centreTimes(centre);
+                        Decomposition.(trialCentre).CoefficientsDimensions       = 'Trials x Channels x Frequencies x Times';
+                        Decomposition.(trialCentre).Frequencies                  = frequencies;
+                        Decomposition.(trialCentre).FrequenciesUnits             = 'Hz'
+                        Decomposition.(trialCentre).Times                        = centreDomain;
+                        Decomposition.(trialCentre).TimesUnits                   = 'milliseconds';
+                        Decomposition.(trialCentre).BaselinePowerSpectrum        = baselinePower;
+                        Decomposition.(trialCentre).BaselinePowerSpectrumUnits   = 'Decibel volts^2';
+                        Decomposition.(trialCentre).BaselineTimeLimits           = baselineLimit
+                        Decomposition.(trialCentre).ChannelIndices               = channels;
+                        Decomposition.(trialCentre).ChannelCoordinates           = EEG.chanlocs;
+                        Decomposition.(trialCentre).BlendTimes(trial,:)          = blenderTime - centreTimes(centre);
 
 
                     end % for Centres
@@ -633,15 +655,19 @@ for n = 1:nFiles
             % -------------------------------------------------------------
 
             % Mean power across trials
-            Decomposition.(trialCentre).SpectralPower  ...
+            Decomposition.(trialCentre).SpectralPower ...
                 = mean( Decomposition.(trialCentre).SpectralPower, 1, 'omitnan' );
 
             % Inter-trial phase coherence
             Decomposition.(trialCentre).PhaseCoherence ...
                 = abs( mean( Decomposition.(trialCentre).PhaseDirection, 1, 'omitnan' ) );
+            Decomposition.(trialCentre).PhaseCoherenceUnits ...
+                = 'Phase alignment proportion';
+            Decomposition.(trialCentre).PhaseCoherenceDimensions ...
+                = 'Channels x Frequencies x Times';
 
             % Clean up
-            Decomposition.(trialCentre).SpectralPower  ...
+            Decomposition.(trialCentre).SpectralPower ...
                 = squeeze( Decomposition.(trialCentre).SpectralPower  );
             Decomposition.(trialCentre).PhaseCoherence ...
                 = squeeze( Decomposition.(trialCentre).PhaseCoherence );
