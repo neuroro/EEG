@@ -18,7 +18,7 @@ function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 % >> plotTimeFrequency( squeeze(mean(Stimulus.SpectralPower,1)), Stimulus.Frequencies, Stimulus.Times )
 % >> plotTimeFrequency( squeeze(Stimulus.GrandAverage.SpectralPower(1,:,:)), Stimulus.Frequencies, Stimulus.Times )
 %
-% .. . .  .   .     .        .             .                     .                                  .                                                       .
+%  <-- - -  -   -     -        -             -        -     -   -  - - -->
 %
 % •••( Function Inputs )
 %
@@ -28,9 +28,9 @@ function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 %
 %   times:               Vector of time point values in milliseconds
 %
-% .. . .  .   .     .        .             .                     .                                  .                                                       .
+%  <-- - -  -   -     -        -             -        -     -   -  - - -->
 %
-% •••( 'Optional', Inputs )
+% :( 'Optional', Inputs )
 %
 %   'fticks'      Number of frequencies displayed on the y-axis
 %                   (default 10)
