@@ -71,11 +71,11 @@ disp( ' ' )
 disp( '•.° Localised Event-Related Spectra °.•' )
 disp( '_________________________________________________________________________' )
 disp( ' ' )
-disp( 'Extract event-related spectra at the specified electrode or average of an' )
-disp( 'electrode cluster from all TimeFrequencyData<Participant><Condition>.mat'  )
-disp( 'files containing data centred on more than one event, which are located'   )
-disp( 'in the Current Folder and sub-folders of the Current Folder then save'     )
-disp( 'data in one TimeFrequency<Location>.mat file'                              )
+disp( 'Extract event-related spectra at an electrode or at a local cluster of'    )
+disp( 'electrodes and form local average spectra, for each event-related window,' )
+disp( 'from all TimeFrequencyData*.mat files located in the Current Folder and'   )
+disp( 'sub-folders of the Current Folder, then save all localised data in one'    )
+disp( 'TimeFrequency<Location>.mat file'                                          )
 disp( ' ' )
 
 codeRunTime( 'Started at' )
@@ -211,6 +211,32 @@ for w = 1:nCentres
     nTimes.(eventCentres{w})                  = length( LocalSpectra.(eventCentres{w}).Times );
 end
 
+% Spectral power units and baseline correction
+try
+    spectralPowerUnits     = Decomposition.(eventCentres{1}).SpectralPowerUnits;
+catch
+    try
+        oneWave            = squeeze( Decomposition.Stimulus.Coefficients(:,1,1,:) ); % All trials
+        onePower           = squeeze( Decomposition.Stimulus.SpectralPower(1,1,:) );
+    catch
+        oneWave            = squeeze( Decomposition.(eventCentres{1}).Coefficients(:,1,1,:) ); % All trials
+        onePower           = squeeze( Decomposition.(eventCentres{1}).SpectralPower(1,1,:) );
+    end
+    oneWavePower           = squeeze( mean( 10*log10( oneWave .* conj( oneWave ) ), 1, 'omitnan' ) );
+    maximumPower           = max( onePower, [], 'all', 'omitnan' );
+    meanAbsolutePower      = mean( abs( onePower ), 'all', 'omitnan' );
+    oneDifference          = mean( abs( oneWavePower - onePower ), 'all', 'omitnan' );
+%     disp( [ num2str( oneDifference ) ' decibel mean absolute difference between wavelet power and spectral power' ] )
+    if oneDifference > maximumPower && oneDifference > meanAbsolutePower
+        disp( [ '[' 8 'Baseline correction assumed from mean absolute power difference' ']' 8 ] )
+        spectralPowerUnits = 'Decibels relative to baseline (mean spectrum)';
+    else
+        disp( [ '[' 8 'No baseline correction assumed from mean absolute power similarily' ']' 8 ] )
+        spectralPowerUnits = 'Decibel volts^2';
+    end
+    disp( ' ' )
+end
+
 
 % Channels
 % -------------------------------------------------------------------------
@@ -319,7 +345,7 @@ Imputations(nFiles).ParticipantIndex     = [];
 Imputations(nFiles).ConditionIndex       = [];
 for w = 1:nCentres
     LocalSpectra.(eventCentres{w}).SpectralPower            = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
-    LocalSpectra.(eventCentres{w}).SpectralPowerUnits       = 'Decibels relative to baseline (mean spectrum)';
+    LocalSpectra.(eventCentres{w}).SpectralPowerUnits       = spectralPowerUnits;
     LocalSpectra.(eventCentres{w}).SpectralPowerDimensions  = 'Participants x Conditions x Frequencies x Times';
     LocalSpectra.(eventCentres{w}).PhaseCoherence           = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
     LocalSpectra.(eventCentres{w}).PhaseCoherenceUnits      = 'Phase alignment proportion';
@@ -424,7 +450,7 @@ for w = 1:nCentres
     % Spectral Power
     LocalSpectra.(currentCentre).GrandAverage.SpectralPower  ...
          = mean( LocalSpectra.(currentCentre).SpectralPower,  1, 'omitnan' );
-    LocalSpectra.(currentCentre).GrandAverage.SpectralPowerUnits       = 'Decibels relative to baseline (mean spectrum)';
+    LocalSpectra.(currentCentre).GrandAverage.SpectralPowerUnits       = spectralPowerUnits;
     LocalSpectra.(currentCentre).GrandAverage.SpectralPowerDimensions  = 'Conditions x Frequencies x Times';
 
     % Phase Coherence
