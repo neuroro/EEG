@@ -34,10 +34,11 @@ spectralPeaks( fileNamePart, method, frequencyBand, timeLimit, peakSize )
 %                    'delta', 'theta', 'theta+', 'alpha', 'beta', 'gamma'
 %                    (optional input: default 2.5-8.5 Hz)
 %   timeLimit:     Time limit or limits (in ms) within which to extract
-%                    peaks or sinks as a single reference time limit from 
-%                    which the rest are calculated or as a matrix of time 
-%                    limits per (semicolon-separated) event-related window 
-%                    (optional input: default -300 to 200 ms relative to 
+%                    peaks or sinks as one of the following
+%                    tmax      maximum time (numbner in ms) from which the other time limits are calculated or
+%                    matrix of time limits per event-related window, semicolon-separated
+%                    in alphbetical order
+%                    (optional input: default -300 ms to 200 ms relative to 
 %                     response and 75 ms to 600 ms relative to stimulus)
 %   peakSize:      Frequencies (in Hz) and times (in ms) on either
 %                    side of the peak to average across as [f t]
@@ -204,15 +205,32 @@ nFrequencies    = length( frequenciesBand );
 
 % Time limits
 if isscalar( timeLimit )
+    
+    timeLimits = zeros( nCentres, 2 );
+
     for w = 1:nCentres
+
+        % Stimulus-related window
         if contains( eventCentres{w}, 'Stim', 'IgnoreCase', true )
-            timeLimits(w,:) = round( [ timeLimit/8  timeLimit   ] );            %#ok
+            earliestTime    = max( 0, 90 - timeLimit/40 );
+            timeLimits(w,:) = [ earliestTime timeLimit ];
+
+        % Initiation-related window
         elseif contains( eventCentres{w}, 'Init', 'IgnoreCase', true )
-            timeLimits(w,:) = round( [ -timeLimit/2 timeLimit/2 ] );            %#ok
+            timeLimits(w,:) = [ -timeLimit/2 timeLimit/2 ];
+
+        % Response-related window
         elseif contains( eventCentres{w}, 'Resp', 'IgnoreCase', true )
-            timeLimits(w,:) = round( [ -timeLimit/2 timeLimit/3 ] );            %#ok
+            timeLimits(w,:) = [ -timeLimit/2 timeLimit*3/4 ];
+
+        % General event-related window
+        else
+            timeLimits(w,:) = [ -timeLimit/2 timeLimit ];
+
         end
+
     end
+
 else
     timeLimits = timeLimit;
 end
@@ -370,22 +388,18 @@ for w = 1:nCentres
 
                     % Frequency jointness tolerance
                     %   0-2 frequencies on either side of the max are
-                    %   considered joint depending on frequency resolution 
+                    %   considered joint depending on frequency resolution
                     fTolerance1 = 0;
                     fTolerance2 = 2;
-                    fTolerance  = max( fTolerance1, round( nFrequencies*0.05 ) );
+                    fTolerance  = max( fTolerance1, round( nFrequencies*0.05 ) ); % 5% of the number of frequencies in the frequency band
                     fTolerance  = min( fTolerance2, fTolerance );
 
                     % Time jointness tolerance
-                    %   2-4 samples on either side of the max are
+                    %   1-3+ samples on either side of the max are
                     %   considered joint depending on the sampling rate
-                    if timesLimited(2) - timesLimited(1) < 1      % > 1000 Hz
-                        tTolerance = 3;
-                    elseif timesLimited(2) - timesLimited(1) == 1 % = 1000 Hz
-                        tTolerance = 2;
-                    elseif timesLimited(2) - timesLimited(1) > 1  % < 1000 Hz
-                        tTolerance = 1;
-                    end
+                    sampleTime  = mean( diff( timesLimited ) );
+                    tTolerance  = max( 1, round( 2 / sampleTime ) );
+
 
                     % Joint local maxima across frequencies and times with
                     % jointness tolerance
