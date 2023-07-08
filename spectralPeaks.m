@@ -33,12 +33,15 @@ spectralPeaks( fileNamePart, method, frequencyBand, timeLimit, peakSize )
 %                    [f1 f2] in Hz or as pre-set named frequency bands
 %                    'delta', 'theta', 'theta+', 'alpha', 'beta', 'gamma'
 %                    (optional input: default 2.5-8.5 Hz)
-%   timeLimit:     Time limit or limits (in ms) within which to extract
-%                    peaks or sinks as one of the following
-%                    tmax      maximum time (numbner in ms) from which the other time limits are calculated or
-%                    matrix of time limits per event-related window, semicolon-separated
-%                    in alphbetical order
-%                    (optional input: default -300 ms to 200 ms relative to 
+%   timeLimit:     Time limit or limits (in ms) within which to extract the
+%                    peak or sink as one of the following:
+%                    maximum time (number in ms) from which the other time 
+%                      limits are dervied
+%                    vector of stimulus-related time limits [tmin tmax]
+%                    matrix of time limits per event-related window, 
+%                     semicolon-separated in (alphbetical) order as w x t, 
+%                     for example [t1Resp t2Resp; t1Stim t2Stim]
+%                    (optional input: default -200 ms to 300 ms relative to 
 %                     response and 75 ms to 600 ms relative to stimulus)
 %   peakSize:      Frequencies (in Hz) and times (in ms) on either
 %                    side of the peak to average across as [f t]
@@ -51,7 +54,7 @@ spectralPeaks( fileNamePart, method, frequencyBand, timeLimit, peakSize )
 % >> spectralPeaks
 % >> spectralPeaks( 'FMCluster' )
 % >> spectralPeaks( '', 'localmax', [2.5 8.5], 600 )
-% >> spectralPeaks( '', 'min', 'alpha', [-300 200; 100 600] )
+% >> spectralPeaks( '', 'min', 'alpha', [-200 300; 75 600] )
 % >> spectralPeaks( '', '', '', 0, [1.5 20] )
 %
 % • Author •
@@ -73,6 +76,9 @@ spectralPeaks( fileNamePart, method, frequencyBand, timeLimit, peakSize )
 % Public License for more details (https://www.gnu.org/licenses/).
 %
 % Please cite this code if you use it
+%
+% King, R. (2023). spectralPeaks [MATLAB code]. GitHub. 
+% https://github.com/neuroro/EEG/spectralPeaks.m
 
 
 % Introduction
@@ -217,11 +223,11 @@ if isscalar( timeLimit )
 
         % Initiation-related window
         elseif contains( eventCentres{w}, 'Init', 'IgnoreCase', true )
-            timeLimits(w,:) = [ -timeLimit/2 timeLimit/2 ];
+            timeLimits(w,:) = [ -timeLimit/2 timeLimit/3 ];
 
         % Response-related window
         elseif contains( eventCentres{w}, 'Resp', 'IgnoreCase', true )
-            timeLimits(w,:) = [ -timeLimit/2 timeLimit*3/4 ];
+            timeLimits(w,:) = [ -timeLimit/3 timeLimit*2 ];
 
         % General event-related window
         else
