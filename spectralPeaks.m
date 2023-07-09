@@ -174,6 +174,7 @@ nFiles       = length( fileStruct );
 % Sanity check
 if nFiles > 1
     disp( [ '[' 8 'WARNING: Multiple files found, using the first one.' ']' 8 ] )
+    disp( ' ' )
 end
 
 % File to use
@@ -353,10 +354,14 @@ disp( ' ' )
 % -------------------------------------------------------------------------
 
 % SpectralPeaks struct peak field names and field pre-allocation
-dimensions = { '' 'Frequency' 'Time' };
+dimensions      = { '' 'Frequency' 'Time'         };
+dimensionsUnits = { '' 'Hz'        'milliseconds' };
 for w = 1:nCentres
     for m = 1:nMetrics
         dimensions{1} = metrics{m};
+        if ~isempty( metricUnits{m} )
+            dimensionsUnits{1} = metricUnits{m};
+        end
         for d = 1:length( dimensions )
             if ~minima
                 peakFields{d} = [ extremum dimensions{d} ];                 %#ok
@@ -364,6 +369,7 @@ for w = 1:nCentres
                 peakFields{d} = [ dimensions{d} extremum ];                 %#ok
             end
             SpectralPeaks.(eventCentres{w}).(metrics{m}).(peakFields{d}) = NaN( N, nConditions );
+            SpectralPeaks.(eventCentres{w}).(metrics{m}).([peakFields{d} 'Units']) = dimensionsUnits{d};
         end
     end
 end
@@ -719,9 +725,14 @@ for w = 1:nCentres
 
                 % Peaks or sinks at the grand average per condition
                 if p == 0
-                    SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.(peakFields{1})(c) = peak;
-                    SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.(peakFields{2})(c) = peakFrequency;
-                    SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.(peakFields{3})(c) = peakTime;
+                    SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.(peakFields{1})(c)        = peak;
+                    if ~isempty( metricUnits{m} )
+                    SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.([peakFields{1} 'Units']) = metricUnits{m};
+                    end
+                    SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.(peakFields{2})(c)        = peakFrequency;
+                    SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.([peakFields{2} 'Units']) = 'Hz';
+                    SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.(peakFields{3})(c)        = peakTime;
+                    SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.([peakFields{3} 'Units']) = 'milliseconds';
 
                 % Peaks or sinks per participant per condition
                 elseif p > 0
@@ -736,20 +747,9 @@ for w = 1:nCentres
 
         end % for: Conditions
 
-        
         % Conditions
         SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.Conditions = conditions;
         SpectralPeaks.(currentCentre).(currentMetric).Conditions              = conditions;
-
-        % Units
-        if ~isempty( metricUnits{m} )
-            SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.([ peakFields{1} 'Units' ]) = metricUnits{m};
-            SpectralPeaks.(currentCentre).(currentMetric).([ peakFields{1} 'Units' ])              = metricUnits{m};
-        end
-        SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.([ peakFields{2} 'Units' ]) = 'Hz';
-        SpectralPeaks.(currentCentre).(currentMetric).([ peakFields{2} 'Units' ])              = 'Hz';
-        SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.([ peakFields{3} 'Units' ]) = 'milliseconds';
-        SpectralPeaks.(currentCentre).(currentMetric).([ peakFields{3} 'Units' ])              = 'milliseconds';
 
 
 %% Save peaks or sinks
