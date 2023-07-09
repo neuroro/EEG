@@ -196,24 +196,52 @@ LocalSpectra = load( fullFilePath );
 % -------------------------------------------------------------------------
 
 % Event-centred windowings
-eventCentres = fieldnames( LocalSpectra );
-nCentres     = length( eventCentres );
+eventCentres   = fieldnames( LocalSpectra );
+nCentres       = length( eventCentres );
 
 % Time-frequency metrics
-grandFields  = fieldnames( LocalSpectra.(eventCentres{1}).GrandAverage );
-iMiscFields  = contains( grandFields, { 'Dimension' 'Unit' }, 'IgnoreCase', true );
-metrics      = grandFields(~iMiscFields);
-nMetrics     = length( metrics );
+grandFields    = fieldnames( LocalSpectra.(eventCentres{1}).GrandAverage );
+iMiscFields    = contains( grandFields, { 'Dimension' 'Unit' }, 'IgnoreCase', true );
+metrics        = grandFields(~iMiscFields);
+nMetrics       = length( metrics );
+iPower         = contains( metrics, 'Power',     'IgnoreCase', true );
+iCoherence     = contains( metrics, 'Coherence', 'IgnoreCase', true );
 
 % Conditions
-conditions   = LocalSpectra.(eventCentres{1}).Conditions;
-nConditions  = length( conditions );
+conditions     = LocalSpectra.(eventCentres{1}).Conditions;
+nConditions    = length( conditions );
 
 % Sample size N participants
 N = size( LocalSpectra.(eventCentres{1}).SpectralPower, 1 ); % Participants x conditions x frequencies x times
 
 % Frequencies in the decomposition
 frequenciesAll = LocalSpectra.(eventCentres{1}).Frequencies;
+
+% Metric units
+metricUnits    = cell( 1, nMetrics );
+for m = 1:nMetrics
+    try
+        metricUnits{m} = LocalSpectra.(eventCentres{1}).GrandAverage.([ metrics{m} 'Units' ]);
+    catch
+        if m == find( iPower )
+            metricUnits{m} = 'Decibels';
+        elseif m == find( iCoherence )
+            metricUnits{m} = 'Proportion';
+        end
+    end
+end
+
+% Short metric names
+measures             = metrics;
+measures(iPower)     = { 'Power'     };
+measures(iCoherence) = { 'Coherence' };
+for m = 1:nMetrics
+    if ~minima
+        measures{m}  = [ extremum measures{m} ];
+    else
+        measures{m}  = [ measures{m} extremum ];
+    end
+end
 
 
 %% Peak or sink finding limits
@@ -323,20 +351,6 @@ disp( ' ' )
 
 %% Set up
 % -------------------------------------------------------------------------
-
-% Short metric names
-iPower               = contains( metrics, 'Power',     'IgnoreCase', true );
-iCoherence           = contains( metrics, 'Coherence', 'IgnoreCase', true );
-measures             = metrics;
-measures(iPower)     = { 'Power'     };
-measures(iCoherence) = { 'Coherence' };
-for m = 1:nMetrics
-    if ~minima
-        measures{m} = [ extremum measures{m} ];
-    else
-        measures{m} = [ measures{m} extremum ];
-    end
-end
 
 % SpectralPeaks struct peak field names and field pre-allocation
 dimensions = { '' 'Frequency' 'Time' };
@@ -721,6 +735,21 @@ for w = 1:nCentres
             end % for: Participants 
 
         end % for: Conditions
+
+        
+        % Conditions
+        SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.Conditions = conditions;
+        SpectralPeaks.(currentCentre).(currentMetric).Conditions              = conditions;
+
+        % Units
+        if ~isempty( metricUnits{m} )
+            SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.([ peakFields{1} 'Units' ]) = metricUnits{m};
+            SpectralPeaks.(currentCentre).(currentMetric).([ peakFields{1} 'Units' ])              = metricUnits{m};
+        end
+        SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.([ peakFields{2} 'Units' ]) = 'Hz';
+        SpectralPeaks.(currentCentre).(currentMetric).([ peakFields{2} 'Units' ])              = 'Hz';
+        SpectralPeaks.(currentCentre).(currentMetric).GrandAverage.([ peakFields{3} 'Units' ]) = 'milliseconds';
+        SpectralPeaks.(currentCentre).(currentMetric).([ peakFields{3} 'Units' ])              = 'milliseconds';
 
 
 %% Save peaks or sinks

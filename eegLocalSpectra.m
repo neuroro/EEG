@@ -211,15 +211,16 @@ for w = 1:nCentres
     nTimes.(eventCentres{w})                  = length( LocalSpectra.(eventCentres{w}).Times );
 end
 
-% Spectral power units and baseline correction
+% Spectra units and baseline correction
 try
-    spectralPowerUnits = Decomposition.(eventCentres{1}).SpectralPowerUnits;
+    spectralPowerUnits  = Decomposition.(eventCentres{1}).SpectralPowerUnits;
+    phaseCoherenceUnits = Decomposition.(eventCentres{1}).PhaseCoherenceUnits;
 catch
     try
-        oneWave   = squeeze( Decomposition.Stimulus.Coefficients(:,1,1,:) ); % All trials
+        oneWave   = squeeze( Decomposition.Stimulus.Coefficients(:,1,1,:) );            % All trials
         onePower  = squeeze( Decomposition.Stimulus.SpectralPower(1,1,:) );
     catch
-        oneWave   = squeeze( Decomposition.(eventCentres{1}).Coefficients(:,1,1,:) ); % All trials
+        oneWave   = squeeze( Decomposition.(eventCentres{1}).Coefficients(:,1,1,:) );   % All trials
         onePower  = squeeze( Decomposition.(eventCentres{1}).SpectralPower(1,1,:) );
     end
     oneWavePower  = squeeze( mean( 10*log10( oneWave .* conj( oneWave ) ), 1, 'omitnan' ) );
@@ -235,6 +236,7 @@ catch
         spectralPowerUnits = 'Decibel volts^2';
     end
     disp( ' ' )
+    phaseCoherenceUnits = 'Phase alignment proportion';
 end
 
 
@@ -348,7 +350,7 @@ for w = 1:nCentres
     LocalSpectra.(eventCentres{w}).SpectralPowerUnits       = spectralPowerUnits;
     LocalSpectra.(eventCentres{w}).SpectralPowerDimensions  = 'Participants x Conditions x Frequencies x Times';
     LocalSpectra.(eventCentres{w}).PhaseCoherence           = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
-    LocalSpectra.(eventCentres{w}).PhaseCoherenceUnits      = 'Phase alignment proportion';
+    LocalSpectra.(eventCentres{w}).PhaseCoherenceUnits      = phaseCoherenceUnits;
     LocalSpectra.(eventCentres{w}).PhaseCoherenceDimensions = 'Participants x Conditions x Frequencies x Times';
 end
 
@@ -456,7 +458,7 @@ for w = 1:nCentres
     % Phase Coherence
     LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence ...
          = mean( LocalSpectra.(currentCentre).PhaseCoherence, 1, 'omitnan' );
-    LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceUnits      = 'Phase alignment proportion';
+    LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceUnits      = phaseCoherenceUnits;
     LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceDimensions = 'Conditions x Frequencies x Times';
 
     % Clean up
