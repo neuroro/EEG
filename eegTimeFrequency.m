@@ -101,40 +101,49 @@ disp( ' ' )
 %% Configuration
 % -------------------------------------------------------------------------
 
-% Participant code in the file name that precedes the participant number
-participantCode  = 'P';
+% Participant code prefix of the participant number in the file name
+participantCode = 'P';
 
 
 % Stimulus event labels for each condition
+% -------------------------------------------------------------------------
+% Trials are assumed to contain a stimulus presentation event labelled per
+% condition and a response-decision event
 
-% Sternberg task
-conditions       = { 'STI5' 'STI7' 'STI9' };
+% Generic task
+C.Task        = { '1' };
 
-% Altruism task
-% conditions       = { 'AccH' 'AccM' 'AccL' ...
-%                      'ShaH' 'ShaM' 'ShaL' };
+% Sternberg memory task probes
+C.Probes      = { 'STI5' 'STI7' 'STI9' };
 
-% SRECOG task
-% conditions       = { 'famousKnown'   'famousUnfamiliar'   ...
-%                      'standardKnown' 'standardUnfamiliar' };
+% Altruism reward task
+C.Altruism    = { 'AccH' 'AccM' 'AccL' 'ShaH' 'ShaM' 'ShaL' };
 
+% Standard recognition task
+C.Recognition = { 'famousKnown'   'famousUnfamiliar'   ...
+                  'standardKnown' 'standardUnfamiliar' };
+
+% !!! INPUT YOUR CONDITIONS !!!
+conditions = C.Task;
+
+
+% Events in the trial other than the stimulus
+% -------------------------------------------------------------------------
 
 % Order in the trial of the response event relative to the stimulus event,
-% which is assumed to be 1st
-responseEvent    = 2; % 2nd after stimulus
-
+% which is assumed to be 1st, and is 1st after removal of preceding events
+responseEvent = 2; % 2nd after stimulus
 
 % Non-events, such as fixation, which should not be windowed around
-nonEvents        = { 'Fixation' 'fixation' 'FXTN' ...
-                     'Empty'    'empty'           };
+nonEvents = { 'Fixation' 'fixation' 'FXTN' 'Empty' 'empty' };
 
 % Non-events in the Altruism task
-% boundaryEvents   = { 'b' };
-% for n = 0:9
-%     numberCharacters{n+1} = num2str(n);
-% end
-% nonEvents        = [ boundaryEvents numberCharacters ];
-
+boundaryEvents = { 'b' };
+for n = 0:9
+    numberCharacters{n+1} = num2str(n);
+end
+nonEventsReward = [ boundaryEvents numberCharacters ];
+% nonEvents       = nonEventsReward; % Un-comment if needed
 
 % Time parameters
 samplingRate     = 1000;
@@ -143,37 +152,60 @@ stimulusLimits   = [ -200 1000 ]; % Relative to stimulus time
 responseLimits   = [ -800 500  ]; % Relative to response time
 maxTrialWindow   = 2000;
 
-% Frequency parameters
-if nargin < 2 || isempty( frequencyLimits )
-    frequencyLimits = [ 2 30 ]; % Minium and maximum frequency
-end
-if nargin < 3 || isempty( frequencyResolution ) || ~frequencyResolution
-    frequencyResolution = 30;   % Frequencies per octave
-end
-
 % Trial minima
 minReactionTime  = 100;    % Minimum reaction time
 nTrialsMinimum   = 10;     % Time points with fewer than this number are zeroed
 
-% Blending
+% Blending parameters
 blendingDuration = 80;     % Sigmoid blend time points around adjacent event
 neighbourhood    = [3 30]; % Median window frequencies x time points
 sigmaGauss       = 2;      % Gaussian blur standard deviations
-if nargin < 4
-    blending     = 'sigmoid';
+
+% Default inputs
+% -------------------------------------------------------------------------
+
+% Default frequency range limits
+if nargin < 2 || isempty( frequencyLimits )
+    frequencyLimits = [ 2 30 ]; % Minium and maximum
 end
 
-% % Channels of interest (10-10 system)
-% frontalChannels  = { 'Fz' 'F1' 'F2' 'F3' 'F4' 'FCz' };
-% parietalChannels = { 'Pz' 'P1' 'P2' 'P3' 'P4' 'POz' };
+% Defaut frequencies per octave
+if nargin < 3 || isempty( frequencyResolution ) || ~frequencyResolution
+    frequencyResolution = 30;
+end
 
-% Channels of interest (EGI system)
-frontalChannels  = { 'E24' 'E19' 'E11' 'E4' 'E124' 'E12' 'E5' 'E6' };
-parietalChannels = { 'E52' 'E60' 'E61' 'E62' 'E78' 'E85' 'E92'     };
+% Default blending method
+if nargin < 4
+    blending = 'sigmoid';
+end
 
-% % Channels of interest (indices in the EEG data)
-% frontalChannels  = [ 5  6  7  106 11 12 118 20 19 4  13 112 ];
-% parietalChannels = [ 31 80 55 54  79 62 37  87 86 53 60 85  ];
+
+% EEG cap system
+% -------------------------------------------------------------------------
+% For example '10-10' '10-20' 'Brain Products' 'ActiCap' 'Biosemi' 'EGI'
+
+capSystem = '10-10';
+
+% Channels of interest
+% -------------------------------------------------------------------------
+
+% International 10-10 system
+ChannelSets.Frontal1010      = { 'Fz' 'F1' 'F2' 'F3' 'F4' 'FCz' };
+ChannelSets.Parietal1010     = { 'Pz' 'P1' 'P2' 'P3' 'P4' 'POz' };
+ChannelSets.Occipital1010    = {};
+ChannelSets.Temporal1010     = {};
+
+% EGI system
+ChannelSets.FrontalEGI       = { 'E24' 'E19' 'E11' 'E4' 'E124' 'E12' 'E5' 'E6' };
+ChannelSets.ParietalEGI      = { 'E52' 'E60' 'E61' 'E62' 'E78' 'E85' 'E92'     };
+ChannelSets.OccipitalEGI     = {};
+ChannelSets.TemporalEGI      = {};
+
+% Indices in the EEG data
+ChannelSets.FrontalIndices   = [ 24 19 11 4  124 5  12 6 ];
+ChannelSets.ParietalIndices  = [ 52 60 61 62 78  85 92   ];
+ChannelSets.OccipitalIndices = [];
+ChannelSets.TemporalIndices  = [];
 
 
 %% Derived parameters
@@ -184,9 +216,9 @@ responseEvent    = responseEvent - 1;
 
 % Times
 longestCycle     = samplingRate/frequencyLimits(1);
-edge             = ceil( 1.5 * longestCycle );      % Excised after decomposition to remove edge effects
+edge             = ceil( 1.5 * longestCycle );              % Edges are excised after decomposition to remove edge effects
 if isempty( baselineLimits ) || baselineLimits(1) > -200
-    startTime    = -200;                            % Start no later than -200 ms so that pre-stimulus data exists
+    startTime    = -200;                                    % Start no later than -200 ms so that pre-stimulus data exists
 else
     startTime    = baselineLimits(1);
 end
@@ -212,10 +244,20 @@ octaves          = log2( frequencyLimits(2)/frequencyLimits(1) );
 nFrequencies     = ceil( frequencyResolution*octaves );
 
 % Channels
-channelSet       = [ frontalChannels parietalChannels ];
-if isnumeric( channelSet )
-    channelSet   = sort( channelSet );
+internationalSystemCaps = { 'International' '10' '20' 'Brain' 'Biosemi' 'Acti' };
+if contains( capSystem, internationalSystemCaps, 'IgnoreCase', true )
+    capSystem    = '1010';
+elseif contains( capSystem, { 'EGI' 'Net' 'Station' 'Philips' }, 'IgnoreCase', true )
+    capSystem    = 'EGI';
+else
+    capSystem    = 'Indices';
 end
+channelSetFields = fieldnames( ChannelSets );
+iFieldsSystem    = contains( channelSetFields, capSystem );
+nonSystemFields  = channelSetFields(~iFieldsSystem);
+ChannelSets      = rmfield( ChannelSets, nonSystemFields );
+channelSets      = struct2cell( ChannelSets );
+channelSet       = [ channelSets{:} ];
 nChannels        = length( channelSet );
 
 % Conditions
@@ -432,7 +474,7 @@ for n = 1:nFiles
             end
             centreTimes      = [ stimulusTime responseTime ];
 
-            % Process trials with realistic initiation time (in ms)
+            % Process trials with realistic reaction time (in ms)
             if responseTime >= minReactionTime
 
                 % A realistic trial has been found
@@ -474,12 +516,22 @@ for n = 1:nFiles
                         baseline   = ones( nFrequencies, 1 );
                     end
 
-                    % Convert baseline power to dB across the window
+                    % Convert baseline power to decibel volts^2
                     baselinePower  = 10*log10( baseline );
+
+                    % Baseline spectrum copied across the time window
                     baseline       = repmat( baselinePower, 1, length( spectralPower ) );
 
-                    % Convert power to dB relative to baseline
+                    % Sanity check: Matching size
+                    if size( baseline, 1 ) ~= size( spectralPower, 1 ) || size( baseline, 2 ) ~= size( spectralPower, 2 )
+                        error( 'Baseline size mismatch' )
+                    end
+
+                    % Convert spectral power to decibel volts^2
                     spectralPower  = 10*log10( spectralPower );
+
+                    % Subtract the baseline mean spectrum in logarithmic
+                    % units, giving power in decibels relative to baseline
                     spectralPower  = spectralPower - baseline;
 
                     % Units
@@ -671,7 +723,7 @@ for n = 1:nFiles
             Decomposition.(trialCentre).PhaseCoherence ...
                 = abs( mean( Decomposition.(trialCentre).PhaseDirection, 1, 'omitnan' ) );
             Decomposition.(trialCentre).PhaseCoherenceUnits ...
-                = 'Phase alignment proportion';
+                = coherenceUnits;
             Decomposition.(trialCentre).PhaseCoherenceDimensions ...
                 = 'Channels x Frequencies x Times';
 
