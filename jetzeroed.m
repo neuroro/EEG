@@ -48,17 +48,30 @@ function jzmap = jetzeroed( limits, resolution )
 %
 % Copyright 2023 Rohan King
 %
-% JETZEROED was inspired by the jet (MATLAB) and bluewhitered (Childress,
-% 2008) colour maps.
+% JETZEROED was inspired by the jet (Mathworks, 2022) and bluewhitered
+% (Childress, 2008) colour maps.
 % 
 % Parts of the JETZEROED code were adapted & generalised from bluewhitered
 % (Childress, 2008).
 % 
-% Reference:
+% References:
+%   Mathworks (2022). MATLAB (Version R2022a) [software]. Mathworks.
+%    https://matlab.mathworks.com/
+%   Nathan Childress (2008). bluewhitered [MATLAB code]. MATLAB Central
+%    File Exchange. Retrieved July 11, 2023.
+%    https://www.mathworks.com/matlabcentral/fileexchange/4058-bluewhitered
 %
-% Nathan Childress (2008). bluewhitered [MATLAB code]. MATLAB Central File
-% Exchange. Retrieved July 11, 2023. 
-% https://www.mathworks.com/matlabcentral/fileexchange/4058-bluewhitered
+% This program is free software: you can redistribute it and/or modify it
+% under the terms of the GNU General Public License as published by the
+% Free Software Foundation, either version 3 of the License, or (at your
+% option) any later version.
+%
+% This program is distributed in the hope that it will be useful, but
+% WITHOUT ANY WARRANTY; without even the implied warranty of
+% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+% Public License for more details (https://www.gnu.org/licenses/).
+%
+% Please cite this code if you use it
 
 
 %% Inputs
@@ -149,9 +162,9 @@ end
 
 if positives && negatives
 
-    positiveProportion = cLimits(2) / diff( cLimits );
-    nPositive          = round( positiveProportion * resolution ); % (Childress, 2008)
-    nNegative          = resolution - nPositive;
+    positiveProportion = cLimits(2) / diff( cLimits );              % (Childress, 2008)
+    nPositive          = round( positiveProportion * resolution );  % (Childress, 2008)
+    nNegative          = resolution - nPositive;                    % (Childress, 2008)
     nColours           = [ nNegative nPositive ];
     fixedColours       = { fixedNegatives fixedPositives };
     nFixedColours      = [ nFixedNegatives nFixedPositives ];
