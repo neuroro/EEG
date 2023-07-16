@@ -1,6 +1,6 @@
 function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 %
-% •.° Plot Event-Related Spectra °.•
+% •.° Plot Time-Frequency Decompositions or Event-Related Spectra °.•
 % _________________________________________________________________________
 %
 % Plot event-related spectra as a heatmap with colours scaled to an input
@@ -36,6 +36,8 @@ function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 %                   (default 10)
 %
 %   'colourscale' Scale of the colour space
+%                   [] or '' scale to the data
+%                   [z1 z2]  scale from z1 to z2
 %    or 'cs'        '0' or   scale to the absolute maximum so that zero is
 %                   'abs'    a fixed colour, which is useful for comparing
 %                            plots side-by-side
@@ -43,20 +45,19 @@ function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 %                   '0-'     zero maximum for negative data, as above
 %                   '0='     zero centred for positive and negative data, 
 %                            as above
-%                   [] or '' scale to the data
-%                   [z1 z2]  scale from z1 to z2
-%                   (default scale to the absolute maximum 
-%                         or scale to the data if bluewhitered.m exists)
+%                   (default scale to the absolute maximum or scale to the 
+%                    data if jetzeroed or bluewhitered exist)
 %
 %   'colourmap'   Colour map used to draw the data by MATLAB's colormap
-%    or 'cmap'      Example pre-set colour spaces
+%    or 'cmap'      Example pre-set colour spaces:
 %                   'jet'
 %                   'parula'
 %                   'hsv'
 %                   'turbo'
 %                   Nx3 matrix of N gradients x RGB values
 %                   or
-%                   'bluewhitered' by Nathan Childress (2023) https://au.mathworks.com/matlabcentral/fileexchange/4058-bluewhitered
+%                   'jetzeroed' by Rohan King (2023) https://github.com/neuroro/EEG/blob/main/jetzeroed.m
+%                   'bluewhitered' by Nathan Childress (2008) https://au.mathworks.com/matlabcentral/fileexchange/4058-bluewhitered
 %                   (default jet or bluewhitered if it exists)
 %
 %   'colourbar'   Draw a colour bar at the specified location
@@ -141,18 +142,18 @@ vars.Y = F;
 % Colour scale
 % -------------------------------------------------------------------------
 
-% Default
+% Defaults: jetzeroed or bluewhitered or zero +/- abs max
 if isfield( vars, 'colourscale' )
     colourscale = vars.colourscale;
 else
-    if exist( 'bluewhitered.m', 'file' )
+    if exist( 'jetzeroed.m', 'file' ) || exist( 'bluewhitered.m', 'file' )
         colourscale = [];
     else
         colourscale = '0';
     end
 end
 
-% Abolute zero colour
+% Fixed zero colour
 if ~isempty( colourscale ) && ischar( colourscale )
 
     datamax = max( eventRelatedSpectra, [], 'all', 'omitnan' );
@@ -234,9 +235,13 @@ if isfield( vars, 'colourmap' )
     colormap( vars.colourmap );
 else
     try
-        colormap( bluewhitered() )
+        colormap( jetzeroed() )
     catch
-        colormap jet
+        try
+            colormap( bluewhitered() )
+        catch
+            colormap jet
+        end
     end
 end
 
