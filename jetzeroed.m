@@ -178,7 +178,7 @@ if positives
     
     fixedColourGradient = linspace( 0, 1, nFixedColours(2) );
     colourDomain        = linspace( 0, 1, nColours(2) );
-    positiveColourMap   = zeros( resolution, 3 );
+    positiveColourMap   = zeros( nColours(2), 3 );
     for rgb = 1:3
         positiveColourMap(:,rgb) = ...
             min( max( interp1( fixedColourGradient, fixedColours{2}(:,rgb), colourDomain )', 0 ), 1 );
@@ -192,7 +192,7 @@ if negatives
 
     fixedColourGradient = linspace( 0, 1, nFixedColours(1) );
     colourDomain        = linspace( 0, 1, nColours(1) );
-    negativeColourMap   = zeros( resolution, 3 );
+    negativeColourMap   = zeros( nColours(1), 3 );
     for rgb = 1:3
         negativeColourMap(:,rgb) = ...
             min( max( interp1( fixedColourGradient, fixedColours{1}(:,rgb), colourDomain )', 0 ), 1 );
