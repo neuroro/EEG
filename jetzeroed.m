@@ -95,15 +95,15 @@ end
 %  ------------------------------------------------------------------------
 
 % RGB values for positive value colours
-maxPositive     = [0.5 0 0];    % Deep red
+maxPositive     = [0.5 0 0];    % Dark red
 midPositive     = [1 5/6 0];    % Yellow-orange
 
 % Zero colour
-fixedZero       = [5/6 1 5/6];  % Bright sap-green
+fixedZero       = [5/6 1 5/6];  % Light sunrise green
 
 % Negative value colours
 midNegative     = [0 5/6 1];    % Blue-cyan
-minNegative     = [1/6 0 0.5];  % Indigo-violet
+minNegative     = [1/6 0 0.5];  % Warm indigo
 
 % Fixed colours
 fixedPositives  = [ fixedZero;   midPositive; maxPositive ];
@@ -189,12 +189,12 @@ end
 % Positive colour map 
 if positives
     
-    fixedColourGradient = linspace( 0, 1, nFixedColours(2) );
-    colourDomain        = linspace( 0, 1, nColours(2) );
-    positiveColourMap   = zeros( nColours(2), 3 );
+    fixedColourDomain = linspace( 0, 1, nFixedColours(2) );
+    colourDomain      = linspace( 0, 1, nColours(2) );
+    positiveColourMap = zeros( nColours(2), 3 );
     for rgb = 1:3
         positiveColourMap(:,rgb) = ...
-            min( max( interp1( fixedColourGradient, fixedColours{2}(:,rgb), colourDomain )', 0 ), 1 );
+            min( max( interp1( fixedColourDomain, fixedColours{2}(:,rgb), colourDomain )', 0 ), 1 );
     end
     jzmap = positiveColourMap;
 
@@ -203,12 +203,12 @@ end
 % Negative colour map
 if negatives
 
-    fixedColourGradient = linspace( 0, 1, nFixedColours(1) );
-    colourDomain        = linspace( 0, 1, nColours(1) );
-    negativeColourMap   = zeros( nColours(1), 3 );
+    fixedColourDomain = linspace( 0, 1, nFixedColours(1) );
+    colourDomain      = linspace( 0, 1, nColours(1) );
+    negativeColourMap = zeros( nColours(1), 3 );
     for rgb = 1:3
         negativeColourMap(:,rgb) = ...
-            min( max( interp1( fixedColourGradient, fixedColours{1}(:,rgb), colourDomain )', 0 ), 1 );
+            min( max( interp1( fixedColourDomain, fixedColours{1}(:,rgb), colourDomain )', 0 ), 1 );
     end
     jzmap = negativeColourMap;
 
@@ -232,7 +232,7 @@ end
 % 
 % Parts of the JETZEROED code were adapted & generalised from bluewhitered
 % (cited as Childress, 2008), which is covered in the bluewhitered licence
-% (copied below, as required) as use in source form with modifications.
+% (copied below) as use in source form with modifications.
 %
 % Licence
 % -------------------------------------------------------------------------
