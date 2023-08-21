@@ -9,8 +9,8 @@ function Ct = globalFieldPowerComponents( setName, smoothing )
 % obtain candidate peak latencies for components of the event-related
 % potential (ERP)
 %
-% Savitsky-Golay filtering may give a more reliable indicator of candidate
-% ERP components and their latencies for most EEG recordings
+% Savitsky-Golay filtering may help resolve candidate ERP components in
+% data with a lower signal-to-noise ratio
 %
 % • Usage •
 % -------------------------------------------------------------------------
