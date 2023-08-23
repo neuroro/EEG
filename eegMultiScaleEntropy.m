@@ -52,7 +52,7 @@ function eegMultiScaleEntropy( timeScales, setName )
 %
 % The compositeMultiScaleEntropy, coarseGrain, and sampleEntropy
 % sub-functions that calculate CMSE in this code were written with
-% reference to Wu et al. (2013) and Lee (2012).
+% reference to Wu et al. (2013), Lee (2012), and Lu and Wang (2021).
 %
 % Estimated reliability of CMSE as a function of signal length is in
 % reference to Wu et al. (2013). Estimated accuracy of sample entropy
@@ -75,6 +75,8 @@ function eegMultiScaleEntropy( timeScales, setName )
 % -------------------------------------------------------------------------
 % Lee, K. (2012). Sample Entropy. MATLAB Central File Exchange.
 %   https://www.mathworks.com/matlabcentral/fileexchange/35784-sample-entropy
+% Lu, J., & Wang, Z. (2021). The Systematic Bias of entropy calculation in
+%   the Multi-scale entropy algorithm. Entropy, 23(6), 659.
 % Richman, J. S., & Moorman, J. R. (2000). Physiological time-series
 %   analysis using approximate entropy and sample entropy. American Journal
 %   of Physiology-Heart and Circulatory Physiology, 278(6), H2039-H2049.
@@ -462,7 +464,7 @@ end
 %% Composite Multi-Scale Entropy
 % _________________________________________________________________________
 %
-% Wu, et al. (2013)
+% Wu, et al. (2013), Lu and Wang (2021)
 %
 function mse = compositeMultiScaleEntropy( signal, timeScales, distanceThreshold )
 
@@ -473,12 +475,8 @@ end
 
 % Default distance threshold as a percentage of the standard deviation
 if nargin < 3
-    distanceThreshold = 0.15;
+    distanceThreshold = 0.2; % Default set to 20% to align with Richman and Moorman (2000)
 end
-
-% Tolerance
-% r = 15% of the standard deviation of the signal
-r = distanceThreshold * std( signal ); % , 0, 'omitnan' );
 
 % Pre-allocate
 mse = zeros( 1, length( timeScales ) );
@@ -491,6 +489,10 @@ for s = timeScales
 
         % Coarse grained signal
         scaledSignal = coarseGrain( signal(cg:end), s );
+
+        % Tolerance
+        % Percentage of the standard deviation of the coarse-grained signal
+        r = distanceThreshold * std( scaledSignal , 0, 'omitnan' );
 
         % Composite multi-scale entropy
         mse(s) = mse(s) + sampleEntropy( scaledSignal, r ) / s;
