@@ -147,6 +147,11 @@ for f = 1:nFiles
         continue
     end
 
+    % Double precision (if needed)
+    if ~strcmpi( class( EEG.data ), 'double' )
+        EEG.data = double( EEG.data );
+    end
+
     % Description
     Ct.Contents  = [ 'Global field power (GFP) '             ...
                      'and estimated Components of the ERP '  ...
