@@ -168,7 +168,7 @@ for f = 1:nFiles
     Ct.TimeUnit = 'milliseconds';
 
 
-    %% Global field power and Savitsy-Golay smoothing
+    %% Global field power and Savitsky-Golay smoothing
     %  --------------------------------------------------------------------
 
     % Generate ERP at every channel by averaging across trials
