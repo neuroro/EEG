@@ -69,8 +69,9 @@ eegData = eegData - linearTrend;
 %   numerical issues arising in subsequent processing steps and analyses
 startPolarity  = sign( startPoints );
 endPolarity    = sign( endPoints   );
-eegData(:,1)   = startPolarity .* rand( size( startPolarity ) ) .* 1e-15;
-eegData(:,end) = endPolarity   .* rand( size( endPolarity   ) ) .* 1e-15;
+nearZero       = 1e-16; % Numerical precision is 16 digits by default in R2023b (floating point double precision) and rand produces numbers between 0 and 1
+eegData(:,1)   = startPolarity .* rand( size( startPolarity ) ) .* nearZero;
+eegData(:,end) = endPolarity   .* rand( size( endPolarity   ) ) .* nearZero;
 
 
 % _________________________________________________________________________
