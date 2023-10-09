@@ -179,7 +179,7 @@ minReactionTime  = 100;
 blendingDuration = 80;              % Sigmoid blend time points around adjacent event
 neighbourhood    = [3 30];          % Median blend neighbourhood of frequencies x time points
 sigmaGauss       = 2;               % Gaussian blur standard deviations if median blending
-nTrialsMinimum   = 10;               % Time points with fewer trials than this number are zeroed if median blending
+nTrialsMinimum   = 10;              % Time points with fewer trials than this number are zeroed if median blending
 
 
 % EEG cap system
@@ -216,7 +216,7 @@ ChannelSets.TemporalIndices  = [];
 
 % Default frequency range limits
 if nargin < 2 || isempty( frequencyLimits )
-    frequencyLimits = [ 2 30 ]; % Minium and maximum
+    frequencyLimits = [ 2 30 ]; % Minium and maximum (Hz)
 end
 
 % Defaut frequencies per octave
@@ -577,13 +577,12 @@ for n = 1:nFiles
                     % or retaining power in decibel volts^2 if no baseline
                     spectralPower  = spectralPower - baseline;
 
-                    % Units
+                    % Power units
                     if baselineLimit(1)
                         powerUnits = 'Decibels relative to baseline (mean spectrum)';
                     else
                         powerUnits = 'Decibel volts^2';
                     end
-                    coherenceUnits = 'Phase alignment proportion';
 
                     % Times (in ms)
                     %   Input signal indices -> output time points in ms
@@ -768,7 +767,7 @@ for n = 1:nFiles
             Decomposition.(trialCentre).PhaseCoherence ...
                 = abs( mean( Decomposition.(trialCentre).PhaseDirection, 1, 'omitnan' ) );
             Decomposition.(trialCentre).PhaseCoherenceUnits ...
-                = coherenceUnits;
+                = 'Phase alignment proportion';
             Decomposition.(trialCentre).PhaseCoherenceDimensions ...
                 = 'Channels x Frequencies x Times';
 
