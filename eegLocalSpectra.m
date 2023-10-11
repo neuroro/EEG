@@ -244,7 +244,7 @@ end
 % -------------------------------------------------------------------------
 
 % Channels in the decomposition
-iChannelSet        = Decomposition.(eventCentres{1}).Channels;           % Channel indices of the EEG data (and channel co-ordinates)
+iChannelSet        = Decomposition.(eventCentres{1}).ChannelIndices;     % Channel indices of the EEG data (and of the channel co-ordinates)
 ChannelCoordinates = Decomposition.(eventCentres{1}).ChannelCoordinates; % Channel co-ordinates
 
 % Selected channels from the decomposition
@@ -393,8 +393,13 @@ for f = 1:nFiles
            && size( Decomposition.(currentCentre).Coefficients, 1 ) >= minimumTrialCount
 
             % Copy from the current decomposition
-            spectralPower  = Decomposition.(currentCentre).SpectralPower(iChannels,:,:);  % Channels x frequencies x times
-            phaseCoherence = Decomposition.(currentCentre).PhaseCoherence(iChannels,:,:); % Channels x frequencies x times
+            if nChannels == 1
+                spectralPower(1,:,:)  = Decomposition.(currentCentre).SpectralPower;                   % Frequencies x times
+                phaseCoherence(1,:,:) = Decomposition.(currentCentre).PhaseCoherence;                  % Frequencies x times
+            elseif nChannels > 1
+                spectralPower         = Decomposition.(currentCentre).SpectralPower(iChannels,:,:);    % Channels x frequencies x times
+                phaseCoherence        = Decomposition.(currentCentre).PhaseCoherence(iChannels,:,:);   % Channels x frequencies x times
+            end
         
         % Incorrect input
         elseif nChannels > length( iChannelSet )
@@ -435,6 +440,8 @@ for f = 1:nFiles
         % Store in arrays
         LocalSpectra.(currentCentre).SpectralPower(iParticipant,iCondition,:,:)  = spectralPower;
         LocalSpectra.(currentCentre).PhaseCoherence(iParticipant,iCondition,:,:) = phaseCoherence;
+
+        clear spectralPower phaseCoherence
         
     end % for Window centres
 
@@ -649,7 +656,7 @@ if length( channels ) > 1 || ( isempty( channels ) && length( iChannelSet ) <= 7
 
     % Individual electrodes named Channel1Channel2...ChannelN
     else
-        locationName = char( channelNames )';
+        locationName = char( channelNames' );
 
     end
 
