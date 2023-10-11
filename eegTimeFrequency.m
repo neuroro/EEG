@@ -102,10 +102,13 @@ disp( ' ' )
 % -------------------------------------------------------------------------
 
 % Participant code prefix of the participant number in the file name
-participantCode = 'P'; 
+% For example 'P' 'S' 'Participant' 'sub-'
+participantCode = 'P';
 
 % Standard recognition task familiarity recode prefix
 % participantCode = 'Familiarity';
+
+% !!! INPUT YOUR PARTICPANT CODE PREFIX !!!
 
 
 % Stimulus event labels for each condition
@@ -148,7 +151,8 @@ NE.nonEvents = { 'Fixation' 'fixation' 'FXTN' 'empty' 'boundary' };
 NE.nonEventsRecognition = { 'S  1' 'empty' };
 
 % Non-events in the Altruism task
-boundaryEvents = { 'b' };
+boundaryEvents   = { 'b' };
+numberCharacters = cell( 1, 10 );
 for n = 0:9
     numberCharacters{n+1} = num2str(n);
 end
@@ -162,6 +166,8 @@ nonEvents          = NE.nonEvents;
 
 % Time parameters
 % -------------------------------------------------------------------------
+
+% !!! INPUT YOUR TIMES !!!
 
 % Sampling rate
 samplingRate     = 1000;
@@ -184,7 +190,7 @@ nTrialsMinimum   = 10;              % Time points with fewer trials than this nu
 
 % EEG cap system
 % -------------------------------------------------------------------------
-% For example '10-10' '10-20' 'Brain Products' 'ActiCap' 'Biosemi' 'EGI'
+% For example '10-10' '10-20' 'Indices' 'Brain Products' 'Biosemi' 'EGI'
 
 capSystem = '10-10';
 
@@ -193,8 +199,8 @@ capSystem = '10-10';
 % -------------------------------------------------------------------------
 
 % International 10-10 system
-ChannelSets.Frontal1010      = { 'Fz' 'F1' 'F2' 'F3' 'F4' 'FCz' }; % { 'Fz'  'F1'  'F2' 'FCz' };
-ChannelSets.Parietal1010     = { 'Pz' 'P1' 'P2' 'P3' 'P4' 'POz' }; % { 'PO7' 'PO8' 'P7' 'P8'  };
+ChannelSets.Frontal1010      = { 'Fz'  'F3'  'F4' 'FCz' };
+ChannelSets.Parietal1010     = { 'PO7' 'PO8' 'P7' 'P8'  };
 ChannelSets.Occipital1010    = {};
 ChannelSets.Temporal1010     = {};
 
@@ -209,6 +215,9 @@ ChannelSets.FrontalIndices   = [ 24 19 11 4  124 5  12 6 ];
 ChannelSets.ParietalIndices  = [ 52 60 61 62 78  85 92   ];
 ChannelSets.OccipitalIndices = [];
 ChannelSets.TemporalIndices  = [];
+
+
+% !!! INPUT YOUR CAP SYSTEM AND CHANNELS !!!
 
 
 %% Default inputs
@@ -304,6 +313,8 @@ end
 % Wildcard dataset name
 if isempty( setName )
     aWildDataset = '*.set';
+elseif contains( setName, '.set' )
+    aWildDataset = [ '*' setName ];
 else
     aWildDataset = [ '*' setName '*.set' ];
 end
@@ -413,11 +424,9 @@ for n = 1:nFiles
         channelSet = eeg_chaninds( CurrentEEG, channelSet );
     end
 
-    % Parallel loop through: Conditions
+    % Loop through: Conditions
     parfor c = 1:nConditions
-
-%     % Loop through: Conditions
-%     for c = 1:nConditions
+    % for c = 1:nConditions
 
         % Current condition event label
         condition     = conditions{c};
@@ -450,6 +459,7 @@ for n = 1:nFiles
         eegEvents      = { EEG.event(:).type };
         iStimulusEvent = strcmpi( condition, eegEvents );
         if sum( iStimulusEvent ) == 1
+            singleTrial          = true;
             disp( [ '[' 8 'Warning: Single trial for ' condition ']' 8 ] )
             iStimulus            = find( iStimulusEvent );
             stimulusLatency      = EEG.event(iStimulus).latency;
@@ -466,6 +476,8 @@ for n = 1:nFiles
         elseif ~any( iStimulusEvent )
             disp( [ '[' 8 'Warning: No trials for ' condition ']' 8 ] )
             continue
+        else
+            singleTrial          = false;
         end
         
         % Epoch trials
@@ -491,9 +503,10 @@ for n = 1:nFiles
             currentTrialEvents  = EEG.epoch(trial).eventtype(:);
             nCurrentTrialEvents = length( currentTrialEvents );
 
-            % Find the index of the stimulus event at 0 ms in case a
-            % preceding event or two made it into the epoch
-            iEpochEventStimulus = find( ~[ EEG.epoch(trial).eventlatency{:} ] );
+            % Find the index of the first stimulus event in case any
+            % preceding events not caught by nonEvents or subsequent
+            % stimulus events made it into the epoch
+            iEpochEventStimulus = find( matches( currentTrialEvents, condition ), 1 );
 
             % Index of the response event using the trial event order
             iEpochEventResponse = iEpochEventStimulus + responseEvent;
@@ -590,8 +603,8 @@ for n = 1:nFiles
 
                     % Sanity check: Time points
                     if any( timePoints ~= startTime + signalIndices - 1 )
-                        disp( [ '[' 8 'Warning: Time points calculation is inconsistent ' ...
-                                'for participant ' pNumber ' condition ' condition  ']' 8 ] )
+                        disp( [ '[' 8 'Warning: Time points calculation ' ...
+                                      'is inconsistent for ' currentFile  ']' 8 ] )
                     end
 
 
@@ -671,6 +684,13 @@ for n = 1:nFiles
 
                         end
 
+                        % Sanity checks
+                        if isscalar( powerWindow ) || isempty( powerWindow )
+                            disp( [ '[' 8 'Warning: No decomposition for trial ' num2str( trial ) ' centred on the ' trialCentre ' in ' currentFile ']' 8 ] )
+                        elseif all( ~powerWindow( ~isnan( powerWindow ) ), 'all' )
+                            disp( [ '[' 8 'Warning: Decomposition of zeroes for trial ' num2str( trial ) ' centred on the ' trialCentre ' in ' currentFile ']' 8 ] )
+                        end
+
                         % Store in struct
                         Decomposition.(trialCentre).SpectralPower(trial,ch,:,:)  = powerWindow;
                         Decomposition.(trialCentre).SpectralPowerUnits           = powerUnits;
@@ -679,12 +699,12 @@ for n = 1:nFiles
                         Decomposition.(trialCentre).Coefficients(trial,ch,:,:)   = wavesWindow;
                         Decomposition.(trialCentre).CoefficientsDimensions       = 'Trials x Channels x Frequencies x Times';
                         Decomposition.(trialCentre).Frequencies                  = frequencies;
-                        Decomposition.(trialCentre).FrequenciesUnits             = 'Hz'
+                        Decomposition.(trialCentre).FrequenciesUnits             = 'Hz';
                         Decomposition.(trialCentre).Times                        = centreDomain;
                         Decomposition.(trialCentre).TimesUnits                   = 'milliseconds';
                         Decomposition.(trialCentre).BaselinePowerSpectrum        = baselinePower;
                         Decomposition.(trialCentre).BaselinePowerSpectrumUnits   = 'Decibel volts^2';
-                        Decomposition.(trialCentre).BaselineTimeLimits           = baselineLimit
+                        Decomposition.(trialCentre).BaselineTimeLimits           = baselineLimit;
                         Decomposition.(trialCentre).ChannelIndices               = channels;
                         Decomposition.(trialCentre).ChannelCoordinates           = EEG.chanlocs;
                         Decomposition.(trialCentre).BlendTimes(trial,:)          = blenderTime - centreTimes(centre);
@@ -745,7 +765,7 @@ for n = 1:nFiles
 
             trialCentre = trialCentres{centre};
 
-            % Time-points with too-few trials
+            % Time-points with too-few trials for median blending
             %   Blending with a median filter won't prevent single extreme
             %   trials from skewing the average
             if isinf( blendDuration )
@@ -753,6 +773,9 @@ for n = 1:nFiles
                 missingPoints  = squeeze( missingPoints(:,1,1,:) ); % All channels and frequencies
                 trialsPerPoint = sum( ~missingPoints, 1 );          %    have an equal trial count
                 iTooFew        = find( trialsPerPoint < nTrialsMinimum );
+                if singleTrial
+                    iTooFew    = find( trialsPerPoint < 1 );
+                end
             end
 
 
@@ -777,7 +800,18 @@ for n = 1:nFiles
             Decomposition.(trialCentre).PhaseCoherence ...
                 = squeeze( Decomposition.(trialCentre).PhaseCoherence );
             Decomposition.(trialCentre) ...
-                = rmfield( Decomposition.(trialCentre), 'PhaseDirection' );
+                = rmfield( Decomposition.(trialCentre), 'PhaseDirection' ); % Remove phase direction
+            if singleTrial
+            Decomposition.(trialCentre).Coefficients ...
+                = Decomposition.(trialCentre).Coefficients(1,:,:,:);        % Remove duplicate trial from coefficients
+            end
+
+            % Sanity checks
+            if isscalar( Decomposition.(trialCentre).SpectralPower ) || isempty( Decomposition.(trialCentre).SpectralPower )
+                disp( [ '[' 8 'Warning: No decomposition centred on the ' trialCentre ' for ' currentFile ']' 8 ] )
+            elseif all( not( Decomposition.(trialCentre).SpectralPower( ~isnan( Decomposition.(trialCentre).SpectralPower ) ) ), 'all' )
+                disp( [ '[' 8 'Warning: Decomposition of zeroes centred on the ' trialCentre ' for ' currentFile ']' 8 ] )
+            end
 
 
             % Median filter trial edges to smooth out discontinuities
@@ -930,41 +964,15 @@ end
 % _________________________________________________________________________
 function timeFrequencyRunTime( message )
 
-% Clock
-clockTime = clock;
-hours     = clockTime(4);
-minutes   = clockTime(5);
-
-% 12-hour
-if hours && hours < 12
-    meridian = 'a.m.';
-elseif hours == 12
-    meridian = 'p.m.';
-elseif hours > 12
-    hours    = hours - 12;
-    meridian = 'p.m.';
-else
-    hours    = 12;
-    meridian = 'a.m.';
-end
-
-% Trailling zero
-if minutes < 10
-    tm = '0';
-else
-    tm = '';
-end
-
-% Time text
-hoursText   = num2str( hours   );
-minutesText = num2str( minutes );
-timeText    = [ hoursText ':' tm minutesText ' ' meridian ];
+% Time
+theTimeIs = datetime( 'now' );
+theTimeIs = char( theTimeIs );
 
 % Print
 if exist( 'message', 'var' )
-    disp( [ message ' ' timeText ] );
+    disp( [ message ' ' theTimeIs ] )
 else
-    disp( timeText );
+    disp( theTimeIs )
 end
 
 
