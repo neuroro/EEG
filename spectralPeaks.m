@@ -692,8 +692,7 @@ for w = 1:nCentres
                     disp( [ '[' 8 extremum ' found outside ' num2str( frequenciesBand(1) ) ' Hz - ' num2str( frequenciesBand(end) ) ' Hz' ']' 8 ] )
                     disp( [ '[' 8 'In ' currentMetric ' relative to the ' currentCentre ']' 8 ] )
                     disp( [ '[' 8 'For the ' iptnum2ordinal(p) ' participant' ']' 8 ] )
-                    disp( [ '[' 8 'In the ' iptnum2ordinal(c) ' condition'    ']' 8 ] )
-                    disp( [ '[' 8 'Relative to the ' currentCentre            ']' 8 ] )
+                    disp( [ '[' 8 'In the '  iptnum2ordinal(c) ' condition'   ']' 8 ] )
                 end
 
                 % Extremum time outside the time limits
@@ -706,21 +705,35 @@ for w = 1:nCentres
                     disp( [ '[' 8 extremum ' found outside ' num2str( timesLimited(1) ) ' ms - ' num2str( timesLimited(end) ) ' ms' ']' 8 ] )
                     disp( [ '[' 8 'In ' currentMetric ' relative to the ' currentCentre ']' 8 ] )
                     disp( [ '[' 8 'For the ' iptnum2ordinal(p) ' participant' ']' 8 ] )
-                    disp( [ '[' 8 'In the ' iptnum2ordinal(c) ' condition'    ']' 8 ] )
-                    
+                    disp( [ '[' 8 'In the '  iptnum2ordinal(c) ' condition'   ']' 8 ] )
                 end
 
+                % Non-existent data
+                if all( isnan( timeFrequency ), 'all' )
+                    disp( [ '[' 8 ':S  Missing data  :S' ']' 8 ] )
+                    disp( [ '[' 8 '••••••••••••••••••••' ']' 8 ] )
+                    disp( [ '[' 8 'For the ' iptnum2ordinal(p) ' participant' ']' 8 ] )
+                    disp( [ '[' 8 'In the '  iptnum2ordinal(c) ' condition'   ']' 8 ] )
+                    disp( ' ' )
+                    peak          = NaN;
+                    peakFrequency = NaN;
+                    peakTime      = NaN;
+
                 % Non-numeric extremum
-                if isnan( peak )
-                    disp( [ '[' 8 '•••••••••••••••••••••••••' ']' 8 ] )
-                    disp( [ '[' 8 '•      •         •      •' ']' 8 ] )
-                    disp( [ '[' 8 '•  :(  •  ERROR  •  :(  •' ']' 8 ] )
-                    disp( [ '[' 8 '•      •         •      •' ']' 8 ] )
-                    disp( [ '[' 8 '•••••••••••••••••••••••••' ']' 8 ] )
+                elseif ~all( isnan( timeFrequency ), 'all' ) && isnan( peak )
+                    disp( [ '[' 8 '•••••••••••••••••••••••••••' ']' 8 ] )
+                    disp( [ '[' 8 '•      •           •      •' ']' 8 ] )
+                    disp( [ '[' 8 '•  :/  •  Warning  •  :/  •' ']' 8 ] )
+                    disp( [ '[' 8 '•      •           •      •' ']' 8 ] )
+                    disp( [ '[' 8 '•••••••••••••••••••••••••••' ']' 8 ] )
                     disp( [ '[' 8 measures{m} ' relative to the ' currentCentre ' is not-a-number' ']' 8 ] )
                     disp( [ '[' 8 'For the ' iptnum2ordinal(p) ' participant' ']' 8 ] )
-                    disp( [ '[' 8 'In the ' iptnum2ordinal(c) ' condition'    ']' 8 ] )
+                    disp( [ '[' 8 'In the '  iptnum2ordinal(c) ' condition'   ']' 8 ] )
+                    disp( [ '[' 8 'This is not due to missing data and may be an error' ']' 8 ] )
                     disp( ' ' )
+                    peakFrequency = NaN;
+                    peakTime      = NaN;
+
                 end
 
 
