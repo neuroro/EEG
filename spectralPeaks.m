@@ -690,8 +690,10 @@ for w = 1:nCentres
                     disp( [ '[' 8 '•      •         •      •' ']' 8 ] )
                     disp( [ '[' 8 '•••••••••••••••••••••••••' ']' 8 ] )
                     disp( [ '[' 8 extremum ' found outside ' num2str( frequenciesBand(1) ) ' Hz - ' num2str( frequenciesBand(end) ) ' Hz' ']' 8 ] )
+                    disp( [ '[' 8 'In ' currentMetric ' relative to the ' currentCentre ']' 8 ] )
                     disp( [ '[' 8 'For the ' iptnum2ordinal(p) ' participant' ']' 8 ] )
                     disp( [ '[' 8 'In the ' iptnum2ordinal(c) ' condition'    ']' 8 ] )
+                    disp( [ '[' 8 'Relative to the ' currentCentre            ']' 8 ] )
                 end
 
                 % Extremum time outside the time limits
@@ -702,8 +704,10 @@ for w = 1:nCentres
                     disp( [ '[' 8 '•      •         •      •' ']' 8 ] )
                     disp( [ '[' 8 '•••••••••••••••••••••••••' ']' 8 ] )
                     disp( [ '[' 8 extremum ' found outside ' num2str( timesLimited(1) ) ' ms - ' num2str( timesLimited(end) ) ' ms' ']' 8 ] )
+                    disp( [ '[' 8 'In ' currentMetric ' relative to the ' currentCentre ']' 8 ] )
                     disp( [ '[' 8 'For the ' iptnum2ordinal(p) ' participant' ']' 8 ] )
                     disp( [ '[' 8 'In the ' iptnum2ordinal(c) ' condition'    ']' 8 ] )
+                    
                 end
 
                 % Non-numeric extremum
@@ -713,7 +717,7 @@ for w = 1:nCentres
                     disp( [ '[' 8 '•  :(  •  ERROR  •  :(  •' ']' 8 ] )
                     disp( [ '[' 8 '•      •         •      •' ']' 8 ] )
                     disp( [ '[' 8 '•••••••••••••••••••••••••' ']' 8 ] )
-                    disp( [ '[' 8 measures{m} ' not-a-number' ']' 8 ] )
+                    disp( [ '[' 8 measures{m} ' relative to the ' currentCentre ' is not-a-number' ']' 8 ] )
                     disp( [ '[' 8 'For the ' iptnum2ordinal(p) ' participant' ']' 8 ] )
                     disp( [ '[' 8 'In the ' iptnum2ordinal(c) ' condition'    ']' 8 ] )
                     disp( ' ' )
