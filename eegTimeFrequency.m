@@ -107,7 +107,7 @@ disp( ' ' )
 
 % Participant code prefix of the participant number in the file name
 % For example 'P' 'S' 'Participant' 'sub-'
-participantCode = 'P';
+participantCode = 'LTP';
 
 % Standard recognition task familiarity recode prefix
 % participantCode = 'Familiarity';
@@ -687,7 +687,7 @@ for n = 1:nFiles
                         % Sanity checks
                         if isscalar( powerWindow ) || isempty( powerWindow ) || all( isnan( powerWindow ), 'all' )
                             disp( [ '[' 8 'Warning: No decomposition for trial ' num2str( trial ) ' centred on the ' trialCentre ' in ' currentFile ']' 8 ] )
-                        elseif all( ~powerWindow(~isnan( powerWindow )) )
+                        elseif all( ~powerWindow(~isnan( powerWindow )), 'all' )
                             disp( [ '[' 8 'Warning: Decomposition of zeroes for trial ' num2str( trial ) ' centred on the ' trialCentre ' in ' currentFile ']' 8 ] )
                         end
 
@@ -763,7 +763,7 @@ for n = 1:nFiles
 
             trialCentre = trialCentres{centre};
 
-            % Time-points with too-few trials for median blending
+            % Time-points with too-few trials for filter blending
             %   Blending with a median filter won't prevent single extreme
             %   trials from skewing the average
             if isinf( blendDuration )
@@ -807,7 +807,7 @@ for n = 1:nFiles
             % Sanity checks
             if isscalar( Decomposition.(trialCentre).SpectralPower ) || isempty( Decomposition.(trialCentre).SpectralPower )
                 disp( [ '[' 8 'Warning: No decomposition centred on the ' trialCentre ' for ' currentFile ']' 8 ] )
-            elseif all( not( Decomposition.(trialCentre).SpectralPower( ~isnan( Decomposition.(trialCentre).SpectralPower ) ) ), 'all' )
+            elseif all( not( Decomposition.(trialCentre).SpectralPower(~isnan( Decomposition.(trialCentre).SpectralPower )) ), 'all' )
                 disp( [ '[' 8 'Warning: Decomposition of zeroes centred on the ' trialCentre ' for ' currentFile ']' 8 ] )
             end
 
@@ -832,7 +832,6 @@ for n = 1:nFiles
                 Decomposition.(trialCentre).SpectralPower(:,:,iTooFew)  = 0;
                 Decomposition.(trialCentre).PhaseCoherence(:,:,iTooFew) = 0;
                 Decomposition.(trialCentre).Coefficients(:,:,iTooFew)   = NaN*1i;
-
 
             end
 
