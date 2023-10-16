@@ -107,7 +107,7 @@ disp( ' ' )
 
 % Participant code prefix of the participant number in the file name
 % For example 'P' 'S' 'Participant' 'sub-'
-participantCode = 'LTP';
+participantCode = 'P';
 
 % Standard recognition task familiarity recode prefix
 % participantCode = 'Familiarity';
@@ -124,7 +124,7 @@ participantCode = 'LTP';
 C.Task        = { 'Stimulus' };
 
 % Sternberg memory task probes
-C.Probes      = { 'STI9' }; % { 'STI5' 'STI7' 'STI9' };
+C.Probes      = { 'STI5' 'STI7' 'STI9' };
 
 % Standard recognition task
 C.Recognition = { 'Familiar' 'Recognised' 'Misidentified'     ...
@@ -135,8 +135,8 @@ C.Recognition = { 'Familiar' 'Recognised' 'Misidentified'     ...
 C.Altruism    = { 'AccH' 'AccM' 'AccL' 'ShaH' 'ShaM' 'ShaL' };
 
 % !!! INPUT YOUR CONDITIONS !!!
-% conditions    = C.Task;
-conditions    = C.Probes;
+conditions    = C.Task;
+% conditions    = C.Probes;
 % conditions    = C.Recognition;
 % conditions    = C.Altruism;
 
@@ -161,8 +161,8 @@ R.Recognition = { 'S  4' 'S  8' };
 R.Altruism    = { 'Resp' };
 
 % !!! INPUT YOUR RESPONSE TYPES !!!
-% responses     = R.Task;
-responses     = R.Probes;
+responses     = R.Task;
+% responses     = R.Probes;
 % responses     = R.Recognition;
 % responses     = R.Altruism;
 
@@ -202,7 +202,7 @@ nTrialsMinimum   = 10;              % Time points with fewer trials than this nu
 % -------------------------------------------------------------------------
 % For example '10-10' '10-20' 'Indices' 'Brain Products' 'Biosemi' 'EGI'
 
-capSystem = 'EGI';
+capSystem = 'International';
 
 
 % Channels of interest
