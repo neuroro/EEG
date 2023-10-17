@@ -1,5 +1,5 @@
 function ...
-eeg3TimeFrequency( setName, frequencyLimits, frequencyResolution, blending )
+eegTimeFrequency123( setName, frequencyLimits, frequencyResolution, blending )
 %
 % •.° Time-Frequency Decompositions of Event-Related EEG °.•
 % _________________________________________________________________________
