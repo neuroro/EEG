@@ -8,11 +8,12 @@ eegTimeFrequency123( setName, frequencyLimits, frequencyResolution, blending )
 % EEG data for each trial, centred on the stimulus presentation, initiation
 % of the response, and the response decision, for all EEGLAB datasets named
 % in common that are located in the Current Folder and sub-folders of the
-% Current Folder, then save a .mat file for each participant x condition to
-% the Current Folder
+% Current Folder, then save a .mat file for each participant x condition in
+% the original folder
 %
 % Trials are assumed to contain a stimulus presentation event labelled per
 % condition, a response-initiation event, and a response-decision event
+% that may be labelled per response type
 %
 % EEG data may be continuous or epoched but epochs must be wider than the
 % trial by half a wavelength of the lowest frequency to be decomposed
@@ -22,38 +23,52 @@ eegTimeFrequency123( setName, frequencyLimits, frequencyResolution, blending )
 % Edit the configuration of the EEG data in the code
 % Set the Current Folder to the location of the datasets or the base folder
 %
-% >> eeg3TimeFrequency( setName, frequencyLimits, frequencyResolution, blending )
+% >> eegTimeFrequency( setName, frequencyLimits, frequencyResolution, blending )
 %
-% Inputs:
+% For example:
+% >> eegTimeFrequency( 'Memory' )
+% >> eegTimeFrequency( 'Memory', [ 2 30 ], 30, 'sigmoid' )
+% >> eegTimeFrequency( 'Memory', [], 0, 'smooth' )
+%
+%  <-- - -  -   -     -        -             -        -     -   -  - - -->
+%
+% •••( Function Inputs )
+%
 %   setName:             Part of the file name that is common to all the 
-%                        EEGLAB datasets to be decomposed that are located 
-%                        in the Current Folder and sub-folders of the
-%                        Current Folder, for example 'Memory' or ''
-%                          (optional input, default all datasets)
+%                         EEGLAB datasets to be decomposed that are located 
+%                         in the Current Folder and sub-folders of the
+%                         Current Folder, for example 'Memory' or ''
+%                         (optional input, default all datasets)
+%
 %   frequencyLimits:     Frequencies in Hz to extract as [minimum maximum]
-%                          (optional input, default [2 30])
+%                         (optional input, default [2 30])
+%
 %   frequencyResolution: Frequencies per octave
-%                          (optional input, default 30)
-%   blending:            Blend the edges of variable-length trials using a 
-%                        'sigmoid' taper to 0 dB centred around adjacent 
-%                        events or a 'median' filter then Gaussian blur of
-%                        the time points with trial dropout
-%                          (optional input, default sigmoid blending)
+%                         (optional input, default 30)
 %
-% Output:
+%   blending:            Blend the edges of variable-length trials
+%                         'sigmoid' taper to 0 dB centred around adjacent 
+%                          events
+%                         'smooth' using Savitsky-Golay filtering of the 
+%                          time-points then Gaussian blur with a minimum
+%                          trial cut-off
+%                         'median' filter in 2-D then Gaussian blur with a
+%                          minimum trial cut-off
+%                         (optional input, default sigmoid blending)
+%
+% [ Function Output ] = 
+%
 %   TimeFrequencyDataP<number><condition>.mat files containing data centred
-%   on the stimulus, initiation, and response for each participant and each
-%   condition, from which a localised decomposition can then be extracted
-%   using eegLocalSpectra.m
+%   on the stimulus, data centred on initiation, and data centred on the
+%   response for each participant and each condition, from which a
+%   localised decomposition can then be extracted using eegLocalSpectra.m
 %
-% Examples:
-% >> eeg3TimeFrequency( 'Memory' )
-% >> eeg3TimeFrequency( 'Memory', [], [], 'median' )
-% >> eeg3TimeFrequency( 'Memory', [ 2 30 ], 30, 'sigmoid' )
+%  <-- - -  -   -     -        -             -        -     -   -  - - -->
 %
-% • Requires •
-% -------------------------------------------------------------------------
-% waveletTransform.m and spectralBlender.m by Rohan King
+% !!! Requires !!!
+% 
+% waveletTransform.m by Rohan King (2023) https://github.com/neuroro/EEG/blob/main/waveletTransform.m
+% spectralBlender.m  by Rohan King (2023) https://github.com/neuroro/EEG/blob/main/spectralBlender.m
 % EEGLAB
 %
 % • Author •
@@ -86,89 +101,199 @@ disp( 'EEG data for each trial, centred on the stimulus presentation, initiation
 disp( 'of the response, and the response decision, for all EEGLAB datasets named' )
 disp( 'in common that are located in the Current Folder and sub-folders of the'   )
 disp( 'Current Folder, then save a .mat file for each participant x condition to' )
-disp( 'the Current Folder' )
+disp( 'the original folder' )
 disp( ' ' )
 
 
 %% Configuration
 % -------------------------------------------------------------------------
 
-% Participant code in the file name that precedes the participant number
-participantCode  = 'P';
+% Participant code prefix of the participant number in the file name
+% For example 'P' 'S' 'Participant' 'sub-'
+participantPrefix = 'P';
+
+% Standard recognition task familiarity recode prefix
+% participantPrefix = 'Flanker';
+
+% !!! INPUT YOUR PARTICPANT CODE PREFIX !!!
+
 
 % Stimulus event labels for each condition
-conditions       = { 'cC-R' 'cC-S' ...
-                     'iC-R' 'iC-S' ...
-                     'cI-R' 'cI-S' ...
-                     'iI-R' 'iI-S' };
+% -------------------------------------------------------------------------
+% Trials are assumed to contain a stimulus presentation event labelled per
+% condition that are extracted separately, an initiation of response event,
+% and a response decision event
 
-% Order in the trial of the initiation and response events relative to the
-% stimulus event, which is assumed to be 1st
-initiationEvent  = 2; % 2nd after stimulus
-responseEvent    = 3; % 3rd after stimulus
+% Generic task
+C.Task            = { 'Stimulus' };
 
-% Non-events, such as fixation, which should not be windowed around
-nonEvents        = { 'Fixation' 'fixation' 'FXTN' 'Empty' 'empty' };
+% Eriksen flanker task
+C.Flanker         = { 'cC-R' ...
+                      'cC-S' ...
+                      'iC-R' ...
+                      'iC-S' ...
+                      'cI-R' ...
+                      'cI-S' ...
+                      'iI-R' ...
+                      'iI-S' };
+
+% !!! INPUT YOUR CONDITIONS !!!
+conditions        = C.Task;
+% conditions        = C.Flanker;
+
+
+% Initiation event label
+% -------------------------------------------------------------------------
+% Trials are assumed to contain a stimulus presentation event, an
+% initiation of response event, and a response decision event
+
+% Generic task
+I.Task            = { 'Initiation' };
+
+% Eriksen flanker task
+I.Flanker         = { 'cC-R-Init' ...
+                      'cC-S-Init' ...
+                      'iC-R-Init' ...
+                      'iC-S-Init' ...
+                      'cI-R-Init' ...
+                      'cI-S-Init' ...
+                      'iI-R-Init' ...
+                      'iI-S-Init' };
+
+% !!! INPUT YOUR INITIATION !!!
+initiation         = I.Task;
+% initiation         = I.Flanker
+
+
+% Resonse event labels
+% -------------------------------------------------------------------------
+% Trials are assumed to contain a stimulus presentation event, an
+% initiation of response event, and a response decision event that may be
+% labelled per response type but are not extracted separately
+
+% Generic task
+R.Task            = { 'Response' };
+
+% Eriksen flanker task
+R.Flanker         = { 'cC-R-Resp' ...
+                      'cC-S-Resp' ...
+                      'iC-R-Resp' ...
+                      'iC-S-Resp' ...
+                      'cI-R-Resp' ...
+                      'cI-S-Resp' ...
+                      'iI-R-Resp' ...
+                      'iI-S-Resp' };
+
+% !!! INPUT YOUR RESPONSE TYPES !!!
+responses         = R.Task;
+% responses         = R.Flanker
+
 
 % Time parameters
+% -------------------------------------------------------------------------
+
+% !!! INPUT YOUR TIMES !!!
+
+% Sampling rate
 samplingRate     = 1000;
-baselineLimits   = [ -500 0    ]; % Relative to stimulus time
-stimulusLimits   = [ -200 1000 ]; % Relative to stimulus time
-initiationLimits = [ -500 500  ]; % Relative to initiation time
-responseLimits   = [ -500 500  ]; % Relative to response time
 
-% Frequency parameters
+% Trial limits
+baselineLimits   = [ -500 0    ];   % Relative to stimulus time
+stimulusLimits   = [ -200 1000 ];   % Relative to stimulus time
+initiationLimits = [ -500 500  ];   % Relative to initiation time
+responseLimits   = [ -600 500  ];   % Relative to response time
+
+% Maximum reaction time for a trial to be valid
+maxReactionTime  = 1600;
+
+% Minimum reaction time for a trial to be valid
+minReactionTime  = 100;
+
+% Blending parameters
+blendingDuration = 80;              % Sigmoid blend time points around adjacent event
+neighbourhood    = [3 30];          % Median blend neighbourhood of frequencies x time points
+order            = 5;               % Smoothing: Savitsky-Golay filter order
+                                    %   Higher  is a closer fit -> less smoothing
+frames           = 85;              % Smoothing: Savitsky-Golay filter frame length (must be odd)
+                                    %   Shorter is a closer fit -> less smoothing
+                                    %   Longer  is a wider  fit -> smoother
+sigmaGauss       = 0.5;             % Gaussian blur standard deviations
+nTrialsMinimum   = 10;              % Time points with fewer trials than this number are zeroed (if median blending or smoothing)
+
+
+% EEG cap system
+% -------------------------------------------------------------------------
+% For example '10-10' '10-20' 'Indices' 'Brain Products' 'Biosemi' 'EGI'
+
+capSystem = 'EGI';
+
+
+% Channels of interest
+% -------------------------------------------------------------------------
+
+% International 10-10 system
+ChannelSets.Frontal1010      = { 'Fz'  'F3'  'F4' };
+ChannelSets.Parietal1010     = { 'PO7' 'PO8' 'P7' 'P8'  };
+ChannelSets.Occipital1010    = {};
+ChannelSets.Temporal1010     = {};
+
+% EGI system
+ChannelSets.FrontalEGI       = { 'E11' 'E5'  'E12' 'E6'  };                 % { 'E24' 'E19' 'E11' 'E4' 'E124' 'E12' 'E5' 'E6' };
+ChannelSets.ParietalEGI      = { 'E65' 'E90' 'E58' 'E96' };                 % { 'E52' 'E60' 'E61' 'E62' 'E78' 'E85' 'E92'     };
+ChannelSets.OccipitalEGI     = {};
+ChannelSets.TemporalEGI      = {};
+
+% Indices in the EEG data
+ChannelSets.FrontalIndices   = [ 11 5  12 6  ];                             % [ 24 19 11 4  124 5  12 6 ];
+ChannelSets.ParietalIndices  = [ 65 90 58 96 ];                             % [ 52 60 61 62 78  85 92   ];
+ChannelSets.OccipitalIndices = [];
+ChannelSets.TemporalIndices  = [];
+
+
+% !!! INPUT YOUR CAP SYSTEM AND CHANNELS !!!
+
+
+%% Default inputs
+% -------------------------------------------------------------------------
+
+% Default frequency range limits
 if nargin < 2 || isempty( frequencyLimits )
-    frequencyLimits = [ 2 60 ]; % Minium and maximum frequency
+    frequencyLimits = [ 2 30 ]; % Minium and maximum (Hz)
 end
+
+% Defaut frequencies per octave
 if nargin < 3 || isempty( frequencyResolution ) || ~frequencyResolution
-    frequencyResolution = 30;   % Frequencies per octave
+    frequencyResolution = 30;
 end
-maxTrialWindow   = 2000;
 
-% Trial minima
-minReactionTime  = 100; % Minimum initiation reaction time
-nTrialsMinimum   = 10;  % Time points with fewer than this number are zeroed
-
-% Blending
-blendingDuration = 80;     % Sigmoid blend time points around adjacent event
-neighbourhood    = [3 30]; % Median window frequencies x time points
-sigmaGauss       = 2;      % Gaussian blur standard deviations
+% Default blending method
 if nargin < 4
-    blending     = 'sigmoid';
+    blending = 'sigmoid';
 end
-
-% Channels of interest (indices in the EEG data)
-frontalChannels  = [ 5 6 11 12 ];  % [ 5  6  7  106 11 12 118 20 19 4  13 112 ];
-parietalChannels = [ ];            % [ 31 80 55 54  79 62 37  87 86 53 60 85  ];
-
-% % Channels of interest
-% frontalChannels  = { 'Fz' 'F1' 'F2' 'F3' 'F4' 'FCz' 'FC1' 'FC2' 'FC3' 'FC4' };
-% parietalChannels = { 'Pz' 'P1' 'P2' 'P3' 'P4' 'POz' 'PO1' 'PO2' 'PO3' 'PO4' };
 
 
 %% Derived parameters
 % -------------------------------------------------------------------------
 
-% Events
-initiationEvent  = initiationEvent - 1;
-responseEvent    = responseEvent   - 1;
-
 % Times
 longestCycle     = samplingRate/frequencyLimits(1);
-edge             = ceil( pi/2 * longestCycle );     % Excised after decomposition to remove edge effects
-if isempty( baselineLimits ) || baselineLimits(1) > -200
-    startTime    = -200;                            % Start no later than -200 ms so that pre-stimulus data exists
-else
-    startTime    = baselineLimits(1);
+edge             = ceil( 1.5 * longestCycle );              % Edges are excised after decomposition to remove edge effects
+if isempty( baselineLimits ) || baselineLimits(1) > -200    % Start no later than -200 ms so that pre-stimulus data exists
+    startTime    = min( -200, ( responseLimits(1) + minReactionTime ) );
+else                                                        % Start at the lower baseline limit or at the lower response limit before the minimum reaction time
+    startTime    = min( baselineLimits(1), ( responseLimits(1) + minReactionTime ) );
 end
-startTime        = startTime      - edge;
-startSeconds     = startTime      / 1000;
-endTime          = maxTrialWindow + edge;
-endSeconds       = (endTime + 1)  / 1000;
+if ~isempty( baselineLimits ) && baselineLimits(2) == 0
+    baselineLimits(2) = -1;                                 % Baseline up to the stimulus
+end
+startTime        = startTime - edge;
+startSeconds     = startTime / 1000;
+maxTrialTime     = maxReactionTime + responseLimits(2);
+endTime          = maxTrialTime + edge;
+endSeconds       = ( endTime + 1 ) / 1000;                  % Correction for pop_epoch
 
 % No blending for median filtering
-if contains( blending, 'm', 'IgnoreCase', true ) && ~contains( blending, 's', 'IgnoreCase', true )
+if contains( blending, 'm', 'IgnoreCase', true ) && ~contains( blending, 'sig', 'IgnoreCase', true )
     blendingDuration = Inf;
 end
 
@@ -184,8 +309,20 @@ octaves          = log2( frequencyLimits(2)/frequencyLimits(1) );
 nFrequencies     = ceil( frequencyResolution*octaves );
 
 % Channels
-channelSet       = [ frontalChannels parietalChannels ];
-channelSet       = sort( channelSet );
+internationalSystemCaps = { 'International' '10' '20' 'Brain' 'Biosemi' 'Acti' };
+if contains( capSystem, internationalSystemCaps, 'IgnoreCase', true )
+    capSystem    = '1010';
+elseif contains( capSystem, { 'EGI' 'Net' 'Station' 'Philips' }, 'IgnoreCase', true )
+    capSystem    = 'EGI';
+else
+    capSystem    = 'Indices';
+end
+channelSetFields = fieldnames( ChannelSets );
+iFieldsSystem    = contains( channelSetFields, capSystem );
+nonSystemFields  = channelSetFields(~iFieldsSystem);
+ChannelSets      = rmfield( ChannelSets, nonSystemFields );
+channelSets      = struct2cell( ChannelSets );
+channelSet       = [ channelSets{:} ];
 nChannels        = length( channelSet );
 
 % Conditions
@@ -213,6 +350,8 @@ end
 % Wildcard dataset name
 if isempty( setName )
     aWildDataset = '*.set';
+elseif contains( setName, '.set' )
+    aWildDataset = [ '*' setName ];
 else
     aWildDataset = [ '*' setName '*.set' ];
 end
@@ -232,13 +371,20 @@ disp( '• Times •' )
 disp( '-------------------------------------------------------------------------' )
 disp( [ num2str( samplingRate ) ' Hz sampling rate' ] )
 disp( [ num2str( minReactionTime ) ' ms minimum initiation reaction time' ] )
-if ~isinf( blendingDuration )
+if contains( blending, 'sig', 'IgnoreCase', true )
     disp( [ num2str( blendingDuration ) ' ms sigmoid blend time for variable trial durations'] )
-else
-    disp( [ num2str( neighbourhood(2) ) ' ms ' num2str( neighbourhood(1) ) ' Hz median blend neighbourhood for variable trial durations'] )
+end
+if contains( blending, 'smooth', 'IgnoreCase', true )
+    disp( [ iptnum2ordinal( order ) ' order ' num2str( frames * 1000 / samplingRate ) ' ms Savitsky-Golay smoothing for variable trial durations' ] )
+end
+if contains( blending, 'median', 'IgnoreCase', true )
+    disp( [ num2str( neighbourhood(1) ) ' Hz ' num2str( neighbourhood(2) ) ' ms median blend neighbourhood for variable trial durations' ] )
+end
+if contains( blending, { 'smooth' 'median' }, 'IgnoreCase', true )
+    disp( [ num2str( sigmaGauss ) ' standard deviation Gaussian blurring for variable trial durations' ] )
 end
 disp( 'Trial:')
-disp( [ '0 ms to ' num2str( maxTrialWindow ) ' ms trial window' ] )
+disp( [ '0 ms to ' num2str( maxReactionTime ) ' ms trial window' ] )
 if ~isempty( baselineLimits )
     disp( [ num2str( baselineLimits(1) ) ' ms to ' num2str( baselineLimits(2) ) ...
             ' ms baseline window' ] )
@@ -300,17 +446,17 @@ disp( ' ' )
 for n = 1:nFiles
 
     % File
-    currentFile   = fileList{n};
-    currentFolder = folderList{n};
+    currentFile    = fileList{n};
+    currentFolder  = folderList{n};
     disp( [ 'Decomposing ' currentFile ] )
     disp( ' ' )
 
-    % Load
-    loaderargin   = { 'filename', currentFile,   ...
+    % Load EEG dataset into an EEGLAB struct
+    loaderargin    = { 'filename', currentFile,   ...
                       'filepath', currentFolder, ...
                       'verbose',  'off'          };
-    CurrentEEG    = pop_loadset( loaderargin{:} );
-    CurrentEEG    = eeg_checkset( CurrentEEG );
+    CurrentEEG     = pop_loadset( loaderargin{:} );
+    CurrentEEG     = eeg_checkset( CurrentEEG );
 
     % Sanity check: Sampling rate
     if CurrentEEG.srate ~= samplingRate
@@ -321,27 +467,27 @@ for n = 1:nFiles
     if iscell( channelSet )
         % Compare the channel names to the channel co-ordinates labels in
         % the chanlocs.labels field
-        channelSet = eeg_chaninds( CurrentEEG, channelSet );
+        iChannelSet = eeg_chaninds( CurrentEEG, channelSet );
+    elseif isnumeric( channelSet )
+        iChannelSet = channelSet;
+        channelSet  = { CurrentEEG.chanlocs(iChannelSet).labels };
     end
 
-%     % Parallel loop through: Conditions
-%     parpool;
-%     parfor c = 1:nConditions
-
     % Loop through: Conditions
+%     parfor c = 1:nConditions
     for c = 1:nConditions
 
         % Current condition event label
         condition       = conditions{c};
 
         % Parallel broadcast variables
-        EEG             = CurrentEEG;       % Struct copied to each parallel worker as pop_loadeset is slower
-        channels        = channelSet;       % Always indices at this point
-        baselineLimit   = baselineLimits;   % In ms
-        stimulusLimit   = stimulusLimits;   % In ms
-        initiationLimit = initiationLimits; % In ms
-        responseLimit   = responseLimits;   % In ms
-        blendDuration   = blendingDuration; % In ms
+        EEG             = CurrentEEG;           % Struct copied to each parallel worker as pop_loadeset is slower
+        channels        = iChannelSet;          % Channel indices
+        baselineLimit   = baselineLimits;       % In ms
+        stimulusLimit   = stimulusLimits;       % In ms
+        initiationLimit = initiationLimits;     % In ms
+        responseLimit   = responseLimits;       % In ms
+        blendDuration   = blendingDuration;     % In ms
 
         % Pre-allocate
         Decomposition   = [];
@@ -358,16 +504,35 @@ for n = 1:nFiles
         %% Trial data
         % -----------------------------------------------------------------
 
+        % Deal with conditions in which there is only one trial or none at all
+        eegEvents            = { EEG.event(:).type };
+        iStimulusEvent       = strcmpi( condition, eegEvents );
+        if sum( iStimulusEvent ) == 1
+            singleTrial      = true;
+            disp( [ '[' 8 'Warning: Single trial for ' condition ']' 8 ] )
+            % Duplicate single trial stimulus event so EEGLAB produces epochs
+            iStimulus        = find( iStimulusEvent );
+            EEG.event(end+1) = EEG.event(iStimulus);
+            EEG              = pop_editeventvals( EEG, 'sort', { 'latency', 0 } );
+            EEG              = eeg_checkset( EEG );
+        elseif ~any( iStimulusEvent )
+            disp( [ '[' 8 'Warning: No trials for ' condition ']' 8 ] )
+            continue
+        else
+            singleTrial      = false;
+        end
+        
         % Epoch trials
         EEG     = pop_epoch( EEG, { condition }, [startSeconds endSeconds], 'epochinfo', 'yes' );
         EEG     = eeg_checkset( EEG );
         nTrials = length( EEG.epoch );
 
         % Sanity check: Epoch vs. decomposition window
-        if EEG.pnts ~= length( startTime:endTime )
-            disp( [ num2str( length( startTime:endTime ) ) ' decomposition window time points' ] )
+        if EEG.pnts ~= length( startTime:1000/samplingRate:endTime )
+            disp( [ num2str( length( startTime:1000/samplingRate:endTime ) ) ' decomposition window time points' ] )
             disp( [ num2str( EEG.pnts ) ' epoch time points'] )
-            error( 'Epoching produced the wrong number of time points' )
+            disp( [ '[' 8 'Warning: Number of epoch time points does not match ' ...
+                          'start time to end time points at the sampling rate'   ']' 8 ] )
         end
 
         % Deal with conditions in which the first trials are skipped
@@ -379,53 +544,67 @@ for n = 1:nFiles
 
             % Trial events
             currentTrialEvents    = EEG.epoch(trial).eventtype(:);
-            nCurrentTrialEvents   = length( currentTrialEvents );
 
-            % Stimulus event index
-            %   Find the index of the event at 0 ms in case a preceding
-            %   event or two made it into the epoch
-            iEpochEventStimulus   = find( ~[ EEG.epoch(trial).eventlatency{:} ] );
+            % Index of the first stimulus event in the epoch
+            iEpochEventStimulus   = find( matches( currentTrialEvents, condition ), 1 );
+            if length( iEpochEventStimulus ) > 1
+                [ ~, iCurrentStimulus ] = min( abs( [ EEG.epoch(trial).eventlatency{iEpochEventStimulus} ] ) );
+                iEpochEventStimulus     = iEpochEventStimulus(iCurrentStimulus);
+            end
 
-            % Initiation and response event indices
-            %   Using the stimulus event index and the trial
-            % event order and the 
-            iEpochEventInitiation = iEpochEventStimulus + initiationEvent;
-            iEpochEventResponse   = iEpochEventStimulus + responseEvent;
+            % Index of the next initiation event in the epoch
+            iEpochEventInitiation = find( matches( currentTrialEvents, initiation ) );
+            iEpochEventInitiation = iEpochEventInitiation(iEpochEventInitiation > iEpochEventStimulus); % Initiation after the stimulus
+            if ~isempty( iEpochEventInitiation )
+                iEpochEventInitiation = iEpochEventInitiation(1);                                       % First one
+            end
 
-            % Non-events to exclude
-            iPreEvents            = 1:nCurrentTrialEvents < iEpochEventStimulus; % Indices of events before the stimulus
-            iNonEvents            = contains( currentTrialEvents, nonEvents );   % Indices of non-events such as fixation
-            iExclude              = or( iPreEvents', iNonEvents );
+            % Index of the next response event of any type in the epoch
+            iEpochEventResponse   = find( matches( currentTrialEvents, responses ) );
+            iEpochEventResponse   = iEpochEventResponse(iEpochEventResponse > iEpochEventInitiation);   % Response after initiation
+            if ~isempty( iEpochEventResponse )
+                iEpochEventResponse   = iEpochEventResponse(1);                                         % First one
+            end
 
             % Trial event-locked centerings
-            currentTrialCentres   = currentTrialEvents(~iExclude);
-            nCentres              = length( currentTrialCentres );
+            if ~isempty( iEpochEventInitiation ) && ~isempty( iEpochEventResponse )
+                nCentres = 3;
+            elseif ~isempty( iEpochEventInitiation ) && isempty( iEpochEventResponse )
+                nCentres = 2;
+            else
+                nCentres = 1;
+            end
 
-            % Trial event times (in ms) relative to 0 ms
+            % Trial event times (in ms) relative to the stimulus (at 0 ms)
             switch nCentres
 
-                % Stimulus only, no initiation or response
-                case 1
-                    stimulusTime   = 0;
-                    initiationTime = EEG.times(end) - adjustment - 1; % Blend out by the end of the trial
-                    responseTime   = NaN;
+                % Stimulus, initiation, and response
+                case 3
+                    stimulusTime   = EEG.epoch(trial).eventlatency{iEpochEventStimulus};
+                    initiationTime = EEG.epoch(trial).eventlatency{iEpochEventInitiation};
+                    responseTime   = EEG.epoch(trial).eventlatency{iEpochEventResponse};
 
-                % No response
+                % Stimulus and initiation, but no response
                 case 2
-                    stimulusTime   = 0;
+                    stimulusTime   = EEG.epoch(trial).eventlatency{iEpochEventStimulus};
                     initiationTime = EEG.epoch(trial).eventlatency{iEpochEventInitiation};
                     responseTime   = EEG.times(end) - adjustment - 1; % Blend out by the end of the trial
 
-                % All three
-                case 3
-                    stimulusTime   = 0;
-                    initiationTime = EEG.epoch(trial).eventlatency{iEpochEventInitiation};
-                    responseTime   = EEG.epoch(trial).eventlatency{iEpochEventResponse};
+                % Stimulus only, no initiation or response
+                case 1
+                    stimulusTime   = EEG.epoch(trial).eventlatency{iEpochEventStimulus};
+                    initiationTime = EEG.times(end) - adjustment - 1; % Blend out by the end of the trial
+                    responseTime   = NaN;
 
             end
             centreTimes = [ stimulusTime initiationTime responseTime ];
 
-            % Process trials with realistic initiation time (in ms)
+            % Sanity check
+            if stimulusTime ~= 0
+                disp( [ '[' 8 'Warning: Stimulus at ' num2str( stimulusTime ) ' for ' condition ' trial ' num2str( trial ) ']' 8 ] )
+            end
+
+            % Process trials with realistic initiation of response (in ms)
             if initiationTime >= minReactionTime
 
                 % A realistic trial has been found
@@ -456,26 +635,20 @@ for n = 1:nFiles
                                                           'FrequencyResolution', ...
                                                           frequencyResolution    );
 
-                    % Baseline mean spectrum
-                    baselineLength = length( baselineLimit(1):baselineLimit(2) );
-                    baselineWindow = 1:baselineLength;
-                    baseline       = spectralPower(:,baselineWindow);
-                    baseline       = mean( baseline, 2, 'omitnan' );
-
-                    % No baseline
-                    if ~baselineLimit(1) || isempty( baselineLimit ) || isempty( baseline )
-                        baseline   = 1;
-                    end
-
-                    % Convert power to dB relative to baseline
-                    spectralPower  = 10*log10( spectralPower ./ baseline );
-
                     % Times (in ms)
-                    %   Input signal indices -> output time points in ms
-                    timePointsTest = startTime + signalIndices - 1;
-                    timePoints     = EEG.times(signalIndices);
-                    if samplingRate == 1000 && any( timePoints ~= timePointsTest ) % Sanity check
-                        error( 'Time points calculation is inconsistent' )
+                    %   Wavelet signal indices -> time points in ms
+                    timePoints = EEG.times(signalIndices);
+
+                    % Baseline correction
+                    [ spectralPower, baseline ] = baselineCorrection( spectralPower, ...
+                                                                      timePoints,    ...
+                                                                      baselineLimit  );
+
+                    % Power units
+                    if ~isempty( baselineLimit ) && any( baselineLimit ~=0 )
+                        powerUnits = 'Decibels relative to baseline (mean spectrum)';
+                    else
+                        powerUnits = 'Decibel volts^2';
                     end
 
 
@@ -484,44 +657,56 @@ for n = 1:nFiles
 
                     % Time windows (in ms)
                     %   Relative time limits adjusted by centre event times
-                    %   Limit relative to centre -> limit relative to 0
-                    centreLimits  = { (stimulusTime   + stimulusLimit  ) ...
-                                      (initiationTime + initiationLimit) ...
-                                      (responseTime   + responseLimit  ) };
+                    %   Limit relative to centre -> limit relative to stimulus
+                    centreLimits  = { ( stimulusLimit   + centreTimes(1) ) ... % + 0
+                                      ( initiationLimit + centreTimes(2) ) ... % + initiationTime
+                                      ( responseLimit   + centreTimes(3) ) };  % + responseTime
 
-                    % Time domains relative to centre
-                    centreDomains = { stimulusLimit(1):stimulusLimit(2)     ...
-                                      initiationLimit(1):initiationLimit(2) ...
-                                      responseLimit(1):responseLimit(2) };
+                    % Time domains relative to centre (in ms)
+                    %   Centre window time points relative to the centre
+                    %   event time
+                    iCentreLimits = { and( timePoints >= centreLimits{1}(1), timePoints <= centreLimits{1}(2) ) ...
+                                      and( timePoints >= centreLimits{2}(1), timePoints <= centreLimits{2}(2) ) ...
+                                      and( timePoints >= centreLimits{3}(1), timePoints <= centreLimits{3}(2) ) };
+                    centreDomains = { ( timePoints(iCentreLimits{1}) - centreTimes(1) ) ...
+                                      ( timePoints(iCentreLimits{2}) - centreTimes(2) ) ...
+                                      ( timePoints(iCentreLimits{3}) - centreTimes(3) ) };
 
                     % Blender times
-                    blenderTimes  = { initiationTime                ...
-                                      [ stimulusTime responseTime ] ...
-                                      initiationTime };
+                    blenderTimes  = {   centreTimes(2)                  ... % Blend out at initiationTime
+                                      [ centreTimes(1) centreTimes(3) ] ... % Blend in at stimulusTime and blend out at responseTime
+                                        centreTimes(2) };                   % Blend in at initiationTime
 
                     % Loop through: Event-locked centres
                     for centre = 1:nTrialCentres
 
                         % Current centre
                         trialCentre  = trialCentres{centre};
-                        centreLimit  = centreLimits{centre};
-                        centreDomain = centreDomains{centre};
+                        centreLimit  = centreLimits{centre};  % Times in ms relative to the stimulus
+                        centreDomain = centreDomains{centre}; % Times in ms relative to the centre event
                         blenderTime  = blenderTimes{centre};
                         if centre == 1
-                            blenderDuration = -blendDuration; % Blend out at initiation
+                            blenderDuration = -blendDuration; % Stimulus-locked:   Blend out at the response
                         else
-                            blenderDuration = blendDuration;
-                        end
+                            blenderDuration = blendDuration;  % Initiation-locked: Blend in at the stimulus and out at the response
+                        end                                   % Response-locked:   Blend in at the stimulus
 
                         % Pre-allocate open windows
-                        windowLength = length( centreDomain );
-                        powerWindow  = NaN( nFrequencies, windowLength );
-                        phaseWindow  = NaN( nFrequencies, windowLength )*1i;
-                        wavesWindow  = NaN( nFrequencies, windowLength )*1i;
+                        nWindowTimes = length( centreDomain );
+                        powerWindow  = NaN( nFrequencies, nWindowTimes );
+                        phaseWindow  = NaN( nFrequencies, nWindowTimes )*1i;
+                        wavesWindow  = NaN( nFrequencies, nWindowTimes )*1i;
+
+                        % Skip too-slow reactions found within the epoch
+                        % leaving them as NaN
+                        if ( centre == 2 && initiationTime > maxReactionTime ) || ...
+                           ( centre == 3 && responseTime   > maxReactionTime )
+                            continue
+                        end
 
                         % Process event-centerings found within the epoch
-                        %   Skip too-slow reactions (not within the epoch)
-                        %   leaving them as NaN
+                        % and skip too-slow reactions not within the epoch
+                        % leaving them as NaN
                         if centre <= nCentres
 
                             
@@ -540,32 +725,71 @@ for n = 1:nFiles
                                                                 blenderTime,    ...
                                                                 blenderDuration );
 
-                            % Centre window
-                            %   Find the time point for each centre limit
-                            iCentreLimits1 = find( ~( timePoints - centreLimit(1) ) );
-                            iCentreLimits2 = find( ~( timePoints - centreLimit(2) ) );
-                            if isempty( iCentreLimits2 )
-                                iCentreLimits2 = length( timePoints );
-                            end
-                            centreWindow = iCentreLimits1:iCentreLimits2;
-                            centreLength = length( centreWindow );
+                            % Centre window relative to the stimulus
+                            %   Bounded by the centre limits relative to
+                            %   the stimulus at 0 ms
+                            iCentreWindow = and( timePoints >= centreLimit(1), timePoints <= centreLimit(2) );
+                            nCentreWindow = sum( iCentreWindow );
 
                             % Centre the decomposition
-                            powerWindow(:,1:centreLength) = blendedPower(:,centreWindow);
-                            phaseWindow(:,1:centreLength) = blendedPhase(:,centreWindow);
-                            wavesWindow(:,1:centreLength) = blendedWaves(:,centreWindow);
+                            % ---------------------------------------------
+
+                            % Stimulus
+                            if centre == 1
+                                powerWindow(:,1:nCentreWindow) = blendedPower(:,iCentreWindow);
+                                phaseWindow(:,1:nCentreWindow) = blendedPhase(:,iCentreWindow);
+                                wavesWindow(:,1:nCentreWindow) = blendedWaves(:,iCentreWindow);
+
+                            % Initiation
+                            elseif centre == 2 && initiationTime <= maxReactionTime
+                                [ tCentre, iCentre ] = min( abs( centreDomain ) );      % tCentre should be 0
+                                nBefore              = sum( centreDomain < tCentre );
+                                nAfter               = sum( centreDomain > tCentre );
+                                powerWindow(:,iCentre-nBefore:iCentre+nAfter) ...
+                                                     = blendedPower(:,iCentreWindow);
+                                phaseWindow(:,iCentre-nBefore:iCentre+nAfter) ...
+                                                     = blendedPhase(:,iCentreWindow);
+                                wavesWindow(:,iCentre-nBefore:iCentre+nAfter) ...
+                                                     = blendedWaves(:,iCentreWindow);
+
+                            % Response
+                            elseif centre == 3 && responseTime <= maxReactionTime
+                                powerWindow(:,end-nCentreWindow+1:end) = blendedPower(:,iCentreWindow);
+                                phaseWindow(:,end-nCentreWindow+1:end) = blendedPhase(:,iCentreWindow);
+                                wavesWindow(:,end-nCentreWindow+1:end) = blendedWaves(:,iCentreWindow);
+
+                            end
 
 
                         end
 
+                        % Sanity checks
+                        if isscalar( powerWindow ) || isempty( powerWindow ) || all( isnan( powerWindow ), 'all' )
+                            disp( [ '[' 8 'Warning: No decomposition for trial ' num2str( trial ) ' centred on the ' trialCentre ' in ' currentFile ']' 8 ] )
+                        elseif all( ~powerWindow(~isnan( powerWindow )), 'all' )
+                            disp( [ '[' 8 'Warning: Decomposition of zeroes for trial ' num2str( trial ) ' centred on the ' trialCentre ' in ' currentFile ']' 8 ] )
+                        end
+
                         % Store in struct
                         Decomposition.(trialCentre).SpectralPower(trial,ch,:,:)  = powerWindow;
+                        Decomposition.(trialCentre).SpectralPowerUnits           = powerUnits;
+                        Decomposition.(trialCentre).SpectralPowerDimensions      = 'Channels x Frequencies x Times'; % As it will be after averaging
                         Decomposition.(trialCentre).PhaseDirection(trial,ch,:,:) = phaseWindow;
                         Decomposition.(trialCentre).Coefficients(trial,ch,:,:)   = wavesWindow;
-                        Decomposition.(trialCentre).Frequencies         = frequencies;
-                        Decomposition.(trialCentre).Times               = centreDomain;
-                        Decomposition.(trialCentre).Channels            = channels;
-                        Decomposition.(trialCentre).BlendTimes(trial,:) = blenderTime - centreTimes(centre);
+                        Decomposition.(trialCentre).CoefficientsDimensions       = 'Trials x Channels x Frequencies x Times';
+                        Decomposition.(trialCentre).Frequencies                  = frequencies;
+                        Decomposition.(trialCentre).FrequenciesUnits             = 'Hz';
+                        Decomposition.(trialCentre).Times                        = centreDomain;
+                        Decomposition.(trialCentre).TimesUnits                   = 'milliseconds';
+                        Decomposition.(trialCentre).SamplingRate                 = samplingRate;
+                        Decomposition.(trialCentre).SamplingRateUnits            = 'Hz';
+                        Decomposition.(trialCentre).BaselinePowerSpectrum        = baseline;
+                        Decomposition.(trialCentre).BaselinePowerSpectrumUnits   = 'Decibel volts^2';
+                        Decomposition.(trialCentre).BaselineTimeLimits           = baselineLimit;
+                        Decomposition.(trialCentre).ChannelNames                 = channelSet;
+                        Decomposition.(trialCentre).ChannelIndices               = channels;
+                        Decomposition.(trialCentre).ChannelCoordinates           = EEG.chanlocs;
+                        Decomposition.(trialCentre).BlendTimes(trial,:)          = blenderTime - centreTimes(centre);
 
 
                     end % for Centres
@@ -609,11 +833,6 @@ for n = 1:nFiles
             end
         end
 
-        % Store channel co-ordinates
-        for centre = 1:nTrialCentres
-            Decomposition.(trialCentres{centre}).ChannelCoordinates = EEG.chanlocs;
-        end
-
 
         %% Power, phase coherence, and median blending
         % -----------------------------------------------------------------
@@ -623,7 +842,7 @@ for n = 1:nFiles
 
             trialCentre = trialCentres{centre};
 
-            % Time-points with too-few trials
+            % Time-points with too-few trials for filter blending
             %   Blending with a median filter won't prevent single extreme
             %   trials from skewing the average
             if isinf( blendDuration )
@@ -631,6 +850,9 @@ for n = 1:nFiles
                 missingPoints  = squeeze( missingPoints(:,1,1,:) ); % All channels and frequencies
                 trialsPerPoint = sum( ~missingPoints, 1 );          %    have an equal trial count
                 iTooFew        = find( trialsPerPoint < nTrialsMinimum );
+                if singleTrial
+                    iTooFew    = find( trialsPerPoint < 1 );
+                end
             end
 
 
@@ -638,133 +860,59 @@ for n = 1:nFiles
             % -------------------------------------------------------------
 
             % Mean power across trials
-            Decomposition.(trialCentre).SpectralPower  ...
+            Decomposition.(trialCentre).SpectralPower ...
                 = mean( Decomposition.(trialCentre).SpectralPower, 1, 'omitnan' );
 
             % Inter-trial phase coherence
             Decomposition.(trialCentre).PhaseCoherence ...
                 = abs( mean( Decomposition.(trialCentre).PhaseDirection, 1, 'omitnan' ) );
+            Decomposition.(trialCentre).PhaseCoherenceUnits ...
+                = 'Phase alignment proportion';
+            Decomposition.(trialCentre).PhaseCoherenceDimensions ...
+                = 'Channels x Frequencies x Times';
 
             % Clean up
-            Decomposition.(trialCentre).SpectralPower  ...
+            Decomposition.(trialCentre).SpectralPower ...
                 = squeeze( Decomposition.(trialCentre).SpectralPower  );
             Decomposition.(trialCentre).PhaseCoherence ...
                 = squeeze( Decomposition.(trialCentre).PhaseCoherence );
             Decomposition.(trialCentre) ...
-                = rmfield( Decomposition.(trialCentre), 'PhaseDirection' );
+                = rmfield( Decomposition.(trialCentre), 'PhaseDirection' ); % Remove phase direction
+            if singleTrial && size( Decomposition.(trialCentre).Coefficients, 1 ) == 2
+            Decomposition.(trialCentre).Coefficients ...
+                = Decomposition.(trialCentre).Coefficients(1,:,:,:);        % Remove duplicate trial from coefficients for single trial cases
+            end
+
+            % Sanity checks
+            if isscalar( Decomposition.(trialCentre).SpectralPower ) || isempty( Decomposition.(trialCentre).SpectralPower )
+                disp( [ '[' 8 'Warning: No decomposition centred on the ' trialCentre ' for ' currentFile ']' 8 ] )
+            elseif all( not( Decomposition.(trialCentre).SpectralPower(~isnan( Decomposition.(trialCentre).SpectralPower )) ), 'all' )
+                disp( [ '[' 8 'Warning: Decomposition of zeroes centred on the ' trialCentre ' for ' currentFile ']' 8 ] )
+            end
 
 
-            % Median filter trial edges to smooth out discontinuities
+            % Median filter (2-D) and/or Savitsky-Golay filter then
+            % Gaussian blur trial edges to smooth out discontinuities
             % -------------------------------------------------------------
 
             if isinf( blendDuration )
-                times  = Decomposition.(trialCentre).Times;
-                nTimes = length( times );
 
-
-                % Variable trial length time points to filter
-                % ---------------------------------------------------------
-                % From the trial cut point closest to the centre time
-                % All time points with fewer trials are filtered
-
-                % Edges after the centre event to the end
-                %   Index range of variable response times relative to stimulus
-                blendTimes  = Decomposition.(trialCentre).BlendTimes;
-                if size( blendTimes, 2 ) == 2
-                    blendTimes = blendTimes(:,2);
-                end
-                earliestCut = min( abs( blendTimes ), [], 'omitnan' );
-                iEdgeA1     = find( times == earliestCut );
-                iEdgeA2     = nTimes;
-                iEdgeA      = iEdgeA1:iEdgeA2;
-
-                % Edges before the centre event from the start
-                %   Index range of variable stimulus times relative to response
-                blendTimes  = Decomposition.(trialCentre).BlendTimes;
-                if size( blendTimes, 2 ) == 2
-                    blendTimes = blendTimes(:,1);
-                end
-                iEdgeB1     = 1;
-                latestCut   = min( abs( blendTimes ), [], 'omitnan' );
-                iEdgeB2     = find( times == -latestCut ); % Negative relative to the centre event
-                iEdgeB      = iEdgeB1:iEdgeB2;
-
-                % Pad the edges by the neighbourhood
-                padding     = neighbourhood(2) * 1000 / samplingRate;
-                iEdgeAA     = (iEdgeA1 - padding):iEdgeA2;
-                iEdgeBB     = iEdgeB1:(iEdgeB2 + padding);
-
-
-                % Median filter
-                % ---------------------------------------------------------
-                
-                % Edges to filter
-                switch centre
-                    case 1 % Stimulus-locked
-                        before = false;
-                        after  = true;
-                    case 2 % Response-locked
-                        before = true;
-                        after  = false;
-                end
-
-                % Loop through: Channels
-                for ch = 1:nChannels
-
-                    % Current channel spectra
-                    channelPower = Decomposition.(trialCentre).SpectralPower(ch,:,:);
-                    channelPhase = Decomposition.(trialCentre).PhaseCoherence(ch,:,:);
-                    channelPower = squeeze( channelPower );
-                    channelPhase = squeeze( channelPhase );
-
-                    % Edges after the centre event to the end
-                    if after
-
-                        % Spectral power
-                        edgeSpectra = channelPower(:,iEdgeAA);
-                        edgeSpectra = medfilt2( edgeSpectra, neighbourhood );
-                        edgeSpectra = imgaussfilt( edgeSpectra, sigmaGauss );
-                        Decomposition.(trialCentre).SpectralPower(ch,:,iEdgeA) ...
-                                    = edgeSpectra(:,1+padding:end);
-
-                        % Phase coherence
-                        edgeSpectra = channelPhase(:,iEdgeAA);
-                        edgeSpectra = medfilt2( edgeSpectra, neighbourhood );
-                        edgeSpectra = imgaussfilt( edgeSpectra, sigmaGauss );
-                        Decomposition.(trialCentre).PhaseCoherence(ch,:,iEdgeA) ...
-                                    = edgeSpectra(:,1+padding:end);
-
-                    end
-
-                    % Edges before the centre event to the end
-                    if before
-
-                        % Spectral power
-                        edgeSpectra = channelPower(:,iEdgeBB);
-                        edgeSpectra = medfilt2( edgeSpectra, neighbourhood );
-                        edgeSpectra = imgaussfilt( edgeSpectra, sigmaGauss );
-                        Decomposition.(trialCentre).SpectralPower(ch,:,iEdgeB) ...
-                                    = edgeSpectra(:,1:end-padding);
-
-                        % Phase coherence
-                        edgeSpectra = channelPhase(:,iEdgeBB);
-                        edgeSpectra = medfilt2( edgeSpectra, neighbourhood );
-                        edgeSpectra = imgaussfilt( edgeSpectra, sigmaGauss );
-                        Decomposition.(trialCentre).PhaseCoherence(ch,:,iEdgeB) ...
-                                    = edgeSpectra(:,1:end-padding);
-
-                    end
-
-                end % for Channels
-                
+                % Median, Savitsky-Golay, and Gaussian filter blending
+                Decomposition = filterBlend( Decomposition, ...
+                                             centre,        ...
+                                             trialCentre,   ...
+                                             blending,      ...
+                                             neighbourhood, ...
+                                             order,         ...
+                                             frames,        ...
+                                             sigmaGauss     );               
 
                 % Erase time-points with too-few trials
                 Decomposition.(trialCentre).SpectralPower(:,:,iTooFew)  = 0;
                 Decomposition.(trialCentre).PhaseCoherence(:,:,iTooFew) = 0;
                 Decomposition.(trialCentre).Coefficients(:,:,iTooFew)   = NaN*1i;
 
-
-            end % if Median filter
+            end
 
         end % for Centres
 
@@ -773,12 +921,13 @@ for n = 1:nFiles
         % -----------------------------------------------------------------
 
         % File name
-        [ iP, iXn ] = regexp( currentFile, [ participantCode '[0-9]+' ] );
-        participant = currentFile(iP:iXn);
-        fileName    = [ 'TimeFrequencyData' participant condition ];
+        [ iP, iXn ]  = regexp( currentFile, [ participantPrefix '[0-9]+' ] );
+        participant  = currentFile(iP:iXn);
+        fileName     = [ 'TimeFrequencyData' participant condition ];
+        fileFullPath = fullfile( currentFolder, fileName );
 
-        % Save mat file
-        timeFrequencyParallelSave( fileName, Decomposition )
+        % Save .mat file
+        timeFrequencyParallelSave( fileFullPath, Decomposition )
 
         % Single completion time
         timeText    = [ currentFile ' condition ' condition ' decomposition completed at' ];
@@ -800,45 +949,201 @@ end
 
 
 %%
+% •.° Baseline Correction °.•
+% _________________________________________________________________________
+function ...
+[ spectralPower, baseline ] = baselineCorrection( spectralPower, timePoints, baselineLimit )
+
+% Baseline mean spectrum
+if ~isempty( baselineLimit ) && any( baselineLimit ~=0 )
+    iBaselineTimes = and( timePoints >= baselineLimit(1), timePoints <= baselineLimit(2) );
+    baseline       = spectralPower(:,iBaselineTimes);
+    baseline       = mean( baseline, 2, 'omitnan' );
+
+% No baseline
+elseif isempty( baselineLimit ) || all( baselineLimit == 0 )
+    nFrequencies   = size( spectralPower, 1 );
+    baseline       = ones( nFrequencies, 1 );
+
+end
+
+% Convert baseline power to decibel volts^2
+baseline      = 10*log10( baseline );
+
+% Baseline spectrum copied across the time window
+baselinePower = repmat( baseline, 1, size( spectralPower, 2 ) );
+
+% Sanity check: Matching size
+if size( baselinePower, 1 ) ~= size( spectralPower, 1 ) || ...
+   size( baselinePower, 2 ) ~= size( spectralPower, 2 )
+    error( 'Baseline size mismatch' )
+end
+
+% Convert spectral power to decibel volts^2
+spectralPower = 10*log10( spectralPower );
+
+% Subtract the baseline mean spectrum in logarithmic units
+%   This gives power in decibels relative to baseline or retains power in 
+%   decibel volts^2 if no baseline
+spectralPower = spectralPower - baselinePower;
+
+
+% _________________________________________________________________________
+end
+
+
+
+%%
+% •.° Median, Savitsky-Golay, and Gaussian filter blending °.•
+% _________________________________________________________________________
+function ...
+Decomposition = filterBlend( Decomposition, centre, trialCentre, blending, ...
+                             neighbourhood, order, frames, sigmaGauss )
+
+% Decomposition time data
+times        = Decomposition.(trialCentre).Times;
+nTimes       = length( times );
+samplingRate = Decomposition.(trialCentre).SamplingRate;
+
+
+% Variable trial length time points to filter
+% -------------------------------------------------------------------------
+% From the trial cut point closest to the centre time
+% All time points with fewer trials are filtered
+
+% Edges after the centre event to the end
+%   Index range of variable  response  times relative to stimulus 
+%            or of variable initiation times relative to response
+blendTimes  = Decomposition.(trialCentre).BlendTimes;
+if size( blendTimes, 2 ) == 2
+    blendTimes = blendTimes(:,2);
+end
+earliestCut = min( abs( blendTimes ), [], 'omitnan' );
+iEdgeA1     = find( times == earliestCut );
+iEdgeA2     = nTimes;
+iEdgeA      = iEdgeA1:iEdgeA2;
+
+% Edges before the centre event from the start
+%   Index range of variable  stimulus  times relative to initiation 
+%            or of variable initiation times relative to reponse
+blendTimes  = Decomposition.(trialCentre).BlendTimes;
+if size( blendTimes, 2 ) == 2
+    blendTimes = blendTimes(:,1);
+end
+iEdgeB1     = 1;
+latestCut   = min( abs( blendTimes ), [], 'omitnan' );
+iEdgeB2     = find( times == -latestCut ); % Negative relative to the centre event
+iEdgeB      = iEdgeB1:iEdgeB2;
+
+% Pad the edges by the neighbourhood
+padding     = neighbourhood(2) * 1000 / samplingRate;
+iEdgeAA     = (iEdgeA1 - padding):iEdgeA2;
+iEdgeBB     = iEdgeB1:(iEdgeB2 + padding);
+
+
+% Filtering
+% -------------------------------------------------------------------------
+
+% Edges to filter
+switch centre
+    case 1 % Stimulus-locked
+        before = false;
+        after  = true;
+    case 2 % Initiation-locked
+        before = true;
+        after  = true;
+    case 3 % Response-locked
+        before = true;
+        after  = false;
+end
+
+% Loop through: Channels
+for ch = 1:length( Decomposition.(trialCentre).ChannelNames )
+
+    % Current channel spectra
+    channelPower = Decomposition.(trialCentre).SpectralPower(ch,:,:);
+    channelPhase = Decomposition.(trialCentre).PhaseCoherence(ch,:,:);
+    channelPower = squeeze( channelPower );
+    channelPhase = squeeze( channelPhase );
+
+    % Edges after the centre event to the end
+    if after
+
+        % Spectral power
+        edgeSpectra     = channelPower(:,iEdgeAA);
+        if contains( blending, 'smooth', 'IgnoreCase', true )
+            edgeSpectra = sgolayfilt( edgeSpectra, order, frames, [], 2 );
+        end
+        if contains( blending, 'median', 'IgnoreCase', true )
+            edgeSpectra = medfilt2( edgeSpectra, neighbourhood );
+        end
+        edgeSpectra     = imgaussfilt( edgeSpectra, sigmaGauss );
+        Decomposition.(trialCentre).SpectralPower(ch,:,iEdgeA) ...
+                        = edgeSpectra(:,1+padding:end);
+
+        % Phase coherence
+        edgeSpectra     = channelPhase(:,iEdgeAA);
+        if contains( blending, 'smooth', 'IgnoreCase', true )
+            edgeSpectra = sgolayfilt( edgeSpectra, order, frames, [], 2 );
+        end
+        if contains( blending, 'median', 'IgnoreCase', true )
+            edgeSpectra = medfilt2( edgeSpectra, neighbourhood );
+        end
+        edgeSpectra     = imgaussfilt( edgeSpectra, sigmaGauss );
+        Decomposition.(trialCentre).PhaseCoherence(ch,:,iEdgeA) ...
+                        = edgeSpectra(:,1+padding:end);
+
+    end
+
+    % Edges before the centre event to the end
+    if before
+
+        % Spectral power
+        edgeSpectra     = channelPower(:,iEdgeBB);
+        if contains( blending, 'smooth', 'IgnoreCase', true )
+            edgeSpectra = sgolayfilt( edgeSpectra, order, frames, [], 2 );
+        else
+            edgeSpectra = medfilt2( edgeSpectra, neighbourhood );
+        end
+        edgeSpectra     = imgaussfilt( edgeSpectra, sigmaGauss );
+        Decomposition.(trialCentre).SpectralPower(ch,:,iEdgeB) ...
+                        = edgeSpectra(:,1:end-padding);
+
+        % Phase coherence
+        edgeSpectra     = channelPhase(:,iEdgeBB);
+        if contains( blending, 'smooth', 'IgnoreCase', true )
+            edgeSpectra = sgolayfilt( edgeSpectra, order, frames, [], 2 );
+        else
+            edgeSpectra = medfilt2( edgeSpectra, neighbourhood );
+        end
+        edgeSpectra     = imgaussfilt( edgeSpectra, sigmaGauss );
+        Decomposition.(trialCentre).PhaseCoherence(ch,:,iEdgeB) ...
+                        = edgeSpectra(:,1:end-padding);
+
+    end
+
+end % for Channels
+
+
+% _________________________________________________________________________
+end
+
+
+
+%%
 % •.° Decomposition Run Time °.•
 % _________________________________________________________________________
 function timeFrequencyRunTime( message )
 
-% Clock
-clockTime = clock;
-hours     = clockTime(4);
-minutes   = clockTime(5);
-
-% 12-hour
-if hours && hours < 12
-    meridian = 'a.m.';
-elseif hours == 12
-    meridian = 'p.m.';
-elseif hours > 12
-    hours    = hours - 12;
-    meridian = 'p.m.';
-else
-    hours    = 12;
-    meridian = 'a.m.';
-end
-
-% Trailling zero
-if minutes < 10
-    tm = '0';
-else
-    tm = '';
-end
-
-% Time text
-hoursText   = num2str( hours   );
-minutesText = num2str( minutes );
-timeText    = [ hoursText ':' tm minutesText ' ' meridian ];
+% Time
+theTimeIs = datetime( 'now' );
+theTimeIs = char( theTimeIs );
 
 % Print
 if exist( 'message', 'var' )
-    disp( [ message ' ' timeText ] );
+    disp( [ message ' ' theTimeIs ] )
 else
-    disp( timeText );
+    disp( theTimeIs )
 end
 
 
@@ -859,160 +1164,3 @@ save( fileName, '-struct', 'structOfVariablesToSave', '-v7.3' )
 end
 
 
-
-
-
-
-%% Light median filtering on times with high trial count
-% Currently bugged for trials with minimal trial count dropoff as it makes
-% the time point limits outside the range, sometimes due to the padding but
-% sometimes regardless of the padding = needs reworking to stay in range
-% 
-% % Median filter trial edges to smooth out discontinuities
-%             % -------------------------------------------------------------
-% 
-%             if isinf( blendDuration )
-%                 times  = Decomposition.(trialCentre).Times;
-%                 nTimes = length( times );
-% 
-% 
-%                 % Variable trial length time points to filter
-%                 % ---------------------------------------------------------
-%                 % From the trial cut point closest to the centre time
-%                 % All time points with fewer trials are filtered
-% 
-%                 % Time points with >75% trials are lightly filtered
-%                 lightPoints     = trialsPerPoint > round( nTrials*0.75 );
-%                 neighboursLight = round( [ neighbourhood(1)*1/3 neighbourhood(2)*0.75 ] );
-% 
-%                 % Edges after the centre event to the end
-%                 %   Index range of variable initiation times relative to stimulus
-%                 %   Index range of variable response times relative to initiation
-%                 blendTimes   = Decomposition.(trialCentre).BlendTimes;
-%                 if size( blendTimes, 2 ) == 2
-%                     blendTimes   = blendTimes(:,2);
-%                 end
-%                 earliestCut  = min( abs( blendTimes ), [], 'omitnan' );
-%                 iEdgeALight1 = find( times == earliestCut );
-%                 iEdgeALight2 = find( lightPoints, 1, 'last' );
-%                 iEdgeALight  = iEdgeALight1:iEdgeALight2;
-%                 iEdgeA1      = iEdgeALight2 + 1;
-%                 iEdgeA2      = nTimes;
-%                 iEdgeA       = iEdgeA1:iEdgeA2;
-% 
-%                 % Edges before the centre event from the start
-%                 %   Index range of variable response times relative to initiation
-%                 %   Index range of variable initiation times relative to response
-%                 blendTimes   = Decomposition.(trialCentre).BlendTimes;
-%                 if size( blendTimes, 2 ) == 2
-%                     blendTimes   = blendTimes(:,1);
-%                 end
-%                 iEdgeBLight1 = 1;
-%                 iEdgeBLight2 = find( lightPoints, 1 );
-%                 iEdgeBLight  = iEdgeBLight1:iEdgeBLight2;
-%                 iEdgeB1      = iEdgeBLight2 + 1;
-%                 latestCut    = min( abs( blendTimes ), [], 'omitnan' );
-%                 iEdgeB2      = find( times == -latestCut ); % Negative relative to the centre event
-%                 iEdgeB       = iEdgeB1:iEdgeB2;
-% 
-%                 % Pad the edges by the neighbourhood
-%                 padding      = neighbourhood(2) * 1000 / samplingRate;
-%                 iEdgeAALight = (iEdgeALight1 - padding):(iEdgeALight2 + padding);
-%                 iEdgeAA      = (iEdgeA1 - padding):iEdgeA2;
-%                 iEdgeBBLight = iEdgeBLight1:(iEdgeBLight2 + padding);
-%                 iEdgeBB      = (iEdgeB1 - padding):(iEdgeB2 + padding);
-% 
-% 
-%                 % Median filter
-%                 % ---------------------------------------------------------
-%                 
-%                 % Edges to filter
-%                 switch centre
-%                     case 1 % Stimulus-locked
-%                         before = false;
-%                         after  = true;
-%                     case 2 % Initiation-locked
-%                         before = true;
-%                         after  = true;
-%                     case 3 % Response-locked
-%                         before = true;
-%                         after  = false;
-%                 end
-% 
-%                 % Loop through: Channels
-%                 for ch = 1:nChannels
-% 
-%                     % Current channel spectra
-%                     channelPower = Decomposition.(trialCentre).SpectralPower(ch,:,:);
-%                     channelPhase = Decomposition.(trialCentre).PhaseCoherence(ch,:,:);
-%                     channelPower = squeeze( channelPower );
-%                     channelPhase = squeeze( channelPhase );
-% 
-%                     % Edges after the centre event to the end
-%                     if after
-% 
-%                         % Spectral power
-%                         edgeLightSpectra = channelPower(:,iEdgeAALight);
-%                         edgeSpectra      = channelPower(:,iEdgeAA);
-%                         edgeLightSpectra = medfilt2( edgeLightSpectra, neighboursLight );
-%                         edgeSpectra      = medfilt2( edgeSpectra, neighbourhood );
-%                         edgeLightSpectra = imgaussfilt( edgeLightSpectra, sigmaGauss );
-%                         edgeSpectra      = imgaussfilt( edgeSpectra,      sigmaGauss );
-%                         Decomposition.(trialCentre).SpectralPower(ch,:,iEdgeALight) ...
-%                                          = edgeLightSpectra(:,1+padding:end-padding);
-%                         Decomposition.(trialCentre).SpectralPower(ch,:,iEdgeA) ...
-%                                          = edgeSpectra(:,1+padding:end);
-% 
-%                         % Phase coherence
-%                         edgeLightSpectra = channelPhase(:,iEdgeAALight);
-%                         edgeSpectra      = channelPhase(:,iEdgeAA);
-%                         edgeLightSpectra = medfilt2( edgeLightSpectra, neighboursLight );
-%                         edgeSpectra      = medfilt2( edgeSpectra, neighbourhood );
-%                         edgeLightSpectra = imgaussfilt( edgeLightSpectra, sigmaGauss );
-%                         edgeSpectra      = imgaussfilt( edgeSpectra,      sigmaGauss );
-%                         Decomposition.(trialCentre).PhaseCoherence(ch,:,iEdgeALight) ...
-%                                          = edgeLightSpectra(:,1+padding:end-padding);
-%                         Decomposition.(trialCentre).PhaseCoherence(ch,:,iEdgeA) ...
-%                                          = edgeSpectra(:,1+padding:end);
-% 
-%                     end
-% 
-%                     % Edges before the centre event to the end
-%                     if before
-% 
-%                         % Spectral power
-%                         edgeLightSpectra = channelPower(:,iEdgeBBLight);
-%                         edgeSpectra      = channelPower(:,iEdgeBB);
-%                         edgeLightSpectra = medfilt2( edgeLightSpectra, neighboursLight );
-%                         edgeSpectra      = medfilt2( edgeSpectra, neighbourhood );
-%                         edgeLightSpectra = imgaussfilt( edgeLightSpectra, sigmaGauss );
-%                         edgeSpectra      = imgaussfilt( edgeSpectra,      sigmaGauss );
-%                         Decomposition.(trialCentre).SpectralPower(ch,:,iEdgeBLight) ...
-%                                          = edgeLightSpectra(:,1:end-padding);
-%                         Decomposition.(trialCentre).SpectralPower(ch,:,iEdgeB) ...
-%                                          = edgeSpectra(:,1+padding:end-padding);
-% 
-%                         % Phase coherence
-%                         edgeLightSpectra = channelPhase(:,iEdgeBBLight);
-%                         edgeSpectra      = channelPhase(:,iEdgeBB);
-%                         edgeLightSpectra = medfilt2( edgeLightSpectra, neighboursLight );
-%                         edgeSpectra      = medfilt2( edgeSpectra, neighbourhood );
-%                         edgeLightSpectra = imgaussfilt( edgeLightSpectra, sigmaGauss );
-%                         edgeSpectra      = imgaussfilt( edgeSpectra,      sigmaGauss );
-%                         Decomposition.(trialCentre).PhaseCoherence(ch,:,iEdgeBLight) ...
-%                                          = edgeLightSpectra(:,1:end-padding);
-%                         Decomposition.(trialCentre).PhaseCoherence(ch,:,iEdgeB) ...
-%                                          = edgeSpectra(:,1+padding:end-padding);
-% 
-%                     end
-% 
-%                 end % for Channels
-%                 
-% 
-%                 % Erase time-points with too-few trials
-%                 Decomposition.(trialCentre).SpectralPower(:,:,iTooFew)  = 0;
-%                 Decomposition.(trialCentre).PhaseCoherence(:,:,iTooFew) = 0;
-%                 Decomposition.(trialCentre).Coefficients(:,:,iTooFew)   = NaN*1i;
-% 
-% 
-%             end % if Median filter
