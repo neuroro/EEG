@@ -8,7 +8,7 @@ eegTimeFrequency( setName, frequencyLimits, frequencyResolution, blending )
 % EEG data for each trial, centred on the stimulus presentation and the
 % decision response, for all EEGLAB datasets that are named in common and
 % located in the Current Folder and sub-folders of the Current Folder, then
-% save a .mat file for each participant x condition in the Current Folder
+% save a .mat file for each participant x condition in original folder
 %
 % Trials are assumed to contain a stimulus presentation event labelled per
 % condition and a response-decision event
@@ -98,7 +98,7 @@ disp( 'Calculate event-related spectral power and inter-trial phase coherence of
 disp( 'EEG data for each trial, centred on the stimulus presentation and the'     )
 disp( 'decision response, for all EEGLAB datasets that are named in common and'   )
 disp( 'located in the Current Folder and sub-folders of the Current Folder, then' )
-disp( 'save a .mat file for each participant x condition in the Current Folder'   )
+disp( 'save a .mat file for each participant x condition in the original folder'  )
 disp( ' ' )
 
 
@@ -178,7 +178,7 @@ samplingRate     = 1000;
 % Trial limits
 baselineLimits   = [ -500 0    ];   % Relative to stimulus time
 stimulusLimits   = [ -200 1000 ];   % Relative to stimulus time
-responseLimits   = [ -700 500  ];   % Relative to response time
+responseLimits   = [ -600 500  ];   % Relative to response time
 
 % Maximum response time for a trial to be valid
 maxResponseTime  = 1600;
@@ -255,10 +255,10 @@ end
 % Times
 longestCycle     = samplingRate/frequencyLimits(1);
 edge             = ceil( 1.5 * longestCycle );              % Edges are excised after decomposition to remove edge effects
-if isempty( baselineLimits ) || baselineLimits(1) > -200
-    startTime    = -200;                                    % Start no later than -200 ms so that pre-stimulus data exists
-else
-    startTime    = baselineLimits(1);
+if isempty( baselineLimits ) || baselineLimits(1) > -200    % Start no later than -200 ms so that pre-stimulus data exists
+    startTime    = min( -200, ( responseLimits(1) + minReactionTime ) );
+else                                                        % Start at the lower baseline limit or at the lower response limit before the minimum reaction time
+    startTime    = min( baselineLimits(1), ( responseLimits(1) + minReactionTime ) );
 end
 if ~isempty( baselineLimits ) && baselineLimits(2) == 0
     baselineLimits(2) = -1;                                 % Baseline up to the stimulus
@@ -521,6 +521,10 @@ for n = 1:nFiles
 
             % Index of the first stimulus event in the epoch
             iEpochEventStimulus = find( matches( currentTrialEvents, condition ), 1 );
+            if length( iEpochEventStimulus ) > 1
+                [ ~, iCurrentStimulus ] = min( abs( [ EEG.epoch(trial).eventlatency{iEpochEventStimulus} ] ) );
+                iEpochEventStimulus     = iEpochEventStimulus(iCurrentStimulus);
+            end
 
             % Index of the next response event of any type in the epoch
             iEpochEventResponse = find( matches( currentTrialEvents, responses ) );
@@ -842,12 +846,13 @@ for n = 1:nFiles
         % -----------------------------------------------------------------
 
         % File name
-        [ iP, iXn ] = regexp( currentFile, [ participantCode '[0-9]+' ] );
-        participant = currentFile(iP:iXn);
-        fileName    = [ 'TimeFrequencyData' participant condition ];
+        [ iP, iXn ]  = regexp( currentFile, [ participantCode '[0-9]+' ] );
+        participant  = currentFile(iP:iXn);
+        fileName     = [ 'TimeFrequencyData' participant condition ];
+        fileFullPath = fullfile( currentFolder, fileName );
 
         % Save .mat file
-        timeFrequencyParallelSave( fileName, Decomposition )
+        timeFrequencyParallelSave( fileFullPath, Decomposition )
 
         % Single completion time
         timeText    = [ currentFile ' condition ' condition ' decomposition completed at' ];
