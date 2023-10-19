@@ -451,8 +451,8 @@ for w = 1:nCentres
                 if contains( method, 'local' )
 
                     % Metric local maxima across frequencies and times
-                    [ fLocalMaxima, fProminences ] = islocalmax( timeFrequencyWindow, 1 );
-                    [ tLocalMaxima, tProminences ] = islocalmax( timeFrequencyWindow, 2 );
+                    [ fLocalMaxima, fProminences ] = islocalmax( timeFrequencyWindow, 1 ); % 2-D max indices and prominence values
+                    [ tLocalMaxima, tProminences ] = islocalmax( timeFrequencyWindow, 2 ); % 2-D max indices and prominence values
 
                     % Frequency jointness tolerance
                     %   0-2 frequencies on either side of the max are
@@ -472,8 +472,8 @@ for w = 1:nCentres
                     % Joint local maxima across frequencies and times with
                     % jointness tolerance
                     % -----------------------------------------------------
-                    localMaxima = false( size( timeFrequencyWindow ) );
-                    nTimes      = length( timesLimited );
+                    iLocalMaxima = false( size( timeFrequencyWindow ) );
+                    nTimes       = length( timesLimited );
 
                     % Loop through: Frequencies and times
                     for f = 1:nFrequencies
@@ -501,7 +501,7 @@ for w = 1:nCentres
                                 % Test if the current local maximum is a
                                 % joint time-frequency local maximum
                                 if any( fWindow, 'all' ) && any( tWindow, 'all' )
-                                    localMaxima(f,t) = true;
+                                    iLocalMaxima(f,t) = true;
                                 end
 
                             end
@@ -510,7 +510,7 @@ for w = 1:nCentres
                     end
 
                     % No joint local maximum anywhere
-                    if ~any( localMaxima, 'all' )
+                    if ~any( iLocalMaxima, 'all' )
 
                         % Warning
                         if ~minima
@@ -557,7 +557,7 @@ for w = 1:nCentres
                                     % Test if the current local maximum is
                                     % a joint time-frequency local maximum
                                     if any( fWindow, 'all' ) && any( tWindow, 'all' )
-                                        localMaxima(f,t) = true;
+                                        iLocalMaxima(f,t) = true;
                                     end
     
                                 end
@@ -568,7 +568,7 @@ for w = 1:nCentres
                     end % if No joint local maxima
 
                     % Still no joint local maximum anywhere
-                    if ~any( localMaxima, 'all' )
+                    if ~any( iLocalMaxima, 'all' )
                         disp( [ '[' 8 'Warning: Still no local ' minOrMax ' in ' currentMetric ' found jointly in 2-D'   ']' 8 ] )
                         if p
                             disp( [ '[' 8 'for the ' iptnum2ordinal(p) ' participant in the ' iptnum2ordinal(c) ' condition' ']' 8 ] )
@@ -577,23 +577,23 @@ for w = 1:nCentres
                         end
                         disp( [ '[' 8 'Using 1-D local ' minOrMax(1:5) 'a across times instead, for this case'           ']' 8 ] )
                         disp( ' ' )
-                        localMaxima = tLocalMaxima;
+                        iLocalMaxima = tLocalMaxima;                                    % 2-D logical indices
                     end
 
                     % Joint sum prominences
                     prominences     = fProminences + tProminences;
-                    prominentMaxima = prominences .* localMaxima;
+                    prominentMaxima = prominences .* iLocalMaxima;                      % 2-D prominence of joint maxima
 
                     % Most prominent local maximum
-                    maxProminent    = max( prominentMaxima, [], 'all', 'omitnan' ); % max will give the first of multiple equal max values
-                    iLocalMaximum   = prominentMaxima == maxProminent;
-                    
-                    % Multiple equally jointly prominent maxima
-                    % Most powerful local maximum
+                    maxProminent    = max( prominentMaxima, [], 'all', 'omitnan' );     % max will give the first of multiple equal max values
+                    iLocalMaximum   = prominentMaxima == maxProminent;                  % 2-D logical indices allowing multiple equal maxima
+
+                    % Most powerful local maximum of multiple equally
+                    % jointly prominent maxima
                     if sum( iLocalMaximum, 'all' ) > 1
-                        localMaxPower = timeFrequencyWindow(iLocalMaximum);
-                        [ ~, iMax ]   = max( localMaxPower, [], 'omitnan' ); % max will give the first of multiple equal max values
-                        iLocalMaximum = iLocalMaximum(iMax);
+                        localMaxPower = timeFrequencyWindow .* iLocalMaximum;           % 2-D power of joint maxima with max prominence
+                        maxPower      = max( localMaxPower, [], 'all', 'omitnan' );     % max will give the first of multiple equal max values
+                        iLocalMaximum = localMaxPower == maxPower;                      % 2-D logical indices allowing multiple equal maxima
                     end
 
 
@@ -602,6 +602,8 @@ for w = 1:nCentres
 
                     % Peak indices
                     [ iFrequencyPeak, iTimePeak ] = find( iLocalMaximum );
+                    iFrequencyPeak                = iFrequencyPeak(1);                  % First in case multiple remain
+                    iTimePeak                     = iTimePeak(1);                       % First in case multiple remain
 
                     % Peak frequency
                     peakFrequency = frequenciesBand(iFrequencyPeak);
@@ -712,6 +714,7 @@ for w = 1:nCentres
                 if all( isnan( timeFrequency ), 'all' )
                     disp( [ '[' 8 ':S  Missing data  :S' ']' 8 ] )
                     disp( [ '[' 8 '••••••••••••••••••••' ']' 8 ] )
+                    disp( [ '[' 8 currentMetric ' relative to the ' currentCentre ']' 8 ] )
                     disp( [ '[' 8 'For the ' iptnum2ordinal(p) ' participant' ']' 8 ] )
                     disp( [ '[' 8 'In the '  iptnum2ordinal(c) ' condition'   ']' 8 ] )
                     disp( ' ' )
@@ -877,3 +880,16 @@ end
 % _________________________________________________________________________
 end
 
+
+
+%% Alternative rank sum maxima selection (incomplete)
+% % Minimum rank sum of prominence and power (first ordinal)
+% powerfulMaxima     = timeFrequencyWindow .* iLocalMaxima;
+% maxProminences     = prominentMaxima(prominentMaxima ~= 0);
+% maxPowers          = powerfulMaxima(powerfulMaxima ~= 0);
+% rankProminence     = !!!!!
+% rankPower          = !!!!!
+% rankSumProPow      = rankProminence + rankPower;
+% [ ~, iMinRankSum ] = min( rankSumProPow );
+% maxRankProminent   = maxProminences(iMinRankSum);
+% iLocalMaximum      = prominentMaxima == maxRankProminent;    % 2-D logical indices allowing multiple equal maxima
