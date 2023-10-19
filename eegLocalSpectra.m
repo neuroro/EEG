@@ -184,31 +184,58 @@ nConditions = length( conditions );
 %% Decomposition parameters
 % -------------------------------------------------------------------------
 
-% Determine parameters from the first file
-Decomposition = load( fullfile( folderList{1}, fileList{1} ) );
+% Determine parameters from the first file with complete data
+determining = true;
+d           = 1;
+while determining
 
-% Event-centred windowings
-eventCentres  = fieldnames( Decomposition );
-nCentres      = length( eventCentres );
+    % Try files in order
+    try
 
-% Store conditions in struct
-for w = 1:nCentres
-    LocalSpectra.(eventCentres{w}).Conditions = conditions;
-end
+        % Load decomposition
+        Decomposition = load( fullfile( folderList{d}, fileList{d} ) );
 
-% Frequencies
-for w = 1:nCentres
-    LocalSpectra.(eventCentres{w}).Frequencies      = Decomposition.(eventCentres{w}).Frequencies;
-    LocalSpectra.(eventCentres{w}).FrequenciesUnits = 'Hz';
-end
-nFrequencies  = length( LocalSpectra.(eventCentres{1}).Frequencies );
+        % Event-centred windowings
+        eventCentres  = fieldnames( Decomposition );
+        nCentres      = length( eventCentres );
 
-% Times
-%   Time points vary per window centre
-for w = 1:nCentres
-    LocalSpectra.(eventCentres{w}).Times      = Decomposition.(eventCentres{w}).Times;
-    LocalSpectra.(eventCentres{w}).TimesUnits = 'milliseconds';
-    nTimes.(eventCentres{w})                  = length( LocalSpectra.(eventCentres{w}).Times );
+        % Store conditions in struct
+        for w = 1:nCentres
+            LocalSpectra.(eventCentres{w}).Conditions = conditions;
+        end
+
+        % Frequencies
+        for w = 1:nCentres
+            LocalSpectra.(eventCentres{w}).Frequencies      = Decomposition.(eventCentres{w}).Frequencies;
+            LocalSpectra.(eventCentres{w}).FrequenciesUnits = 'Hz';
+        end
+        nFrequencies  = length( LocalSpectra.(eventCentres{1}).Frequencies );
+
+        % Times
+        %   Time points vary per window centre
+        for w = 1:nCentres
+            LocalSpectra.(eventCentres{w}).Times      = Decomposition.(eventCentres{w}).Times;
+            LocalSpectra.(eventCentres{w}).TimesUnits = 'milliseconds';
+            nTimes.(eventCentres{w})                  = length( LocalSpectra.(eventCentres{w}).Times );
+        end
+
+        % Check decomposition fields exist
+        for w = 1:nCentres
+            fieldCheck = Decomposition.(eventCentres{w}).SpectralPower;                     %#ok
+            fieldCheck = Decomposition.(eventCentres{w}).PhaseCoherence;                    %#ok
+            fieldCheck = Decomposition.(eventCentres{w}).Coefficients;                      %#ok
+        end
+
+        % End determination
+        determining = false;
+
+    % Next file if an error occurs
+    catch
+        
+        d = d + 1;
+
+    end
+
 end
 
 % Spectra units and baseline correction
@@ -276,6 +303,13 @@ elseif isempty( channels ) || length( channels ) == length( iChannelSet )
 
     % Indices of the set of channel indices in the decomposition
     iChannels = 1:nChannels;
+
+% Incorrect input
+elseif length( channels ) > length( iChannelSet )
+    error( [ 'Error: You selected a greater number of channels than ' ...
+             'exist in your time-frequency data files. '              ...
+             'Fix: Input all or a sub-set of the channels that are '  ...
+             'represented in your TimeFrequency*.mat files.'          ] )
 
 end
 
@@ -380,22 +414,35 @@ for f = 1:nFiles
     % Loop through: Window centres
     for w = 1:nCentres
 
+        % Current window centre
         currentCentre  = eventCentres{w};
 
         % Spectral power and phase coherence at the selected channels
         % -----------------------------------------------------------------
 
-        % Check all criteria
-        if    ~isempty( Decomposition.(currentCentre).SpectralPower  )              ...
-           && ~isempty( Decomposition.(currentCentre).PhaseCoherence )              ...
-           && ~isempty( Decomposition.(currentCentre).Coefficients   )              ...
-           && ~all( isnan( Decomposition.(currentCentre).SpectralPower  ), 'all' )  ...
-           && ~all( isnan( Decomposition.(currentCentre).PhaseCoherence ), 'all' )  ...
-           && ~all( isnan( Decomposition.(currentCentre).Coefficients   ), 'all' )  ...
-           && nChannels <= length( iChannelSet )                                    ...
-           && size( Decomposition.(currentCentre).Coefficients, 1 ) >= minimumTrialCount
+        % Check existence
+        if    isempty( Decomposition.(currentCentre).SpectralPower  )             ...
+           || isempty( Decomposition.(currentCentre).PhaseCoherence )             ...
+           || isempty( Decomposition.(currentCentre).Coefficients   )             ...
+           || all( isnan( Decomposition.(currentCentre).SpectralPower  ), 'all' ) ...
+           || all( isnan( Decomposition.(currentCentre).PhaseCoherence ), 'all' ) ...
+           || all( isnan( Decomposition.(currentCentre).Coefficients   ), 'all' )
+            currentExistence = false;
+        else
+            currentExistence = true;
+        end
 
-            % Copy from the current decomposition
+        % Trial count
+        if currentExistence
+            trialCount = size( Decomposition.(currentCentre).Coefficients, 1 );
+        else
+            trialCount = 0;
+        end
+
+        % Data exists in the decomposition
+        if currentExistence && trialCount >= minimumTrialCount
+
+            % Copy data from the current decomposition
             if nChannels == 1
                 spectralPower(1,:,:)  = Decomposition.(currentCentre).SpectralPower;                   % Frequencies x times
                 phaseCoherence(1,:,:) = Decomposition.(currentCentre).PhaseCoherence;                  % Frequencies x times
@@ -403,13 +450,6 @@ for f = 1:nFiles
                 spectralPower         = Decomposition.(currentCentre).SpectralPower(iChannels,:,:);    % Channels x frequencies x times
                 phaseCoherence        = Decomposition.(currentCentre).PhaseCoherence(iChannels,:,:);   % Channels x frequencies x times
             end
-        
-        % Incorrect input
-        elseif nChannels > length( iChannelSet )
-            error( [ 'Error: You selected a greater number of channels than ' ...
-                     'exist in your time-frequency data files. '              ...
-                     'Fix: Input all or a sub-set of the channels that are '  ...
-                     'represented in your TimeFrequency*.mat files.'          ] )
 
         % Imputation: Set data with too-few trials or no values to NaN so
         %   that the initial grand average is true for good included data
@@ -422,7 +462,7 @@ for f = 1:nFiles
             % Set event-related spectra to NaN
             spectralPower  = NaN( nChannels, nFrequencies, nTimes.(currentCentre) );
             phaseCoherence = NaN( nChannels, nFrequencies, nTimes.(currentCentre) );
-            disp( [ '[' 8 'Warning: ' currentCentre '-Related data in ' currentFile ' contains too-few or no trials' ']' 8 ] )
+            disp( [ '[' 8 'Warning: ' currentCentre '-related data in ' currentFile ' contains too-few or no trials' ']' 8 ] )
         
             % Store the information needed to impute the correct data
             Imputations(f).File                    = currentFile; 
@@ -490,7 +530,9 @@ if impute
     for f = 1:nFiles
     
         % Check imputation is needed for the current file
-        if ~isempty( Imputations(f).File ) && ~isempty( Imputations(f).AffectedEventWindows ) && any( Imputations(f).AffectedEventWindows )
+        if     ~isempty( Imputations(f).File )                 ...
+            && ~isempty( Imputations(f).AffectedEventWindows ) ...
+            &&      any( Imputations(f).AffectedEventWindows )
     
             % Affected participant and condition indices in LocalSpectra
             % for the current file
@@ -508,9 +550,11 @@ if impute
 
 
                     % Impute missing or insufficient data
-                    % -------------------------------------------------------------------------
+                    % -----------------------------------------------------
 
-                    disp( [ '[' 8 'Imputing ' affectedCentre '-Related data for the ' iptnum2ordinal(iParticipant) ' participant in the ' iptnum2ordinal(iCondition) ' condition' ']' 8 ] )
+                    disp( [ '[' 8 'Imputing ' affectedCentre '-related data for the ' ...
+                                  iptnum2ordinal(iParticipant) ' participant in the ' ...
+                                  iptnum2ordinal(iCondition)   ' condition'           ']' 8 ] )
                     
                     % Replace individual data with the initial grand average
                     if nConditions > 1
@@ -701,41 +745,15 @@ end
 % _________________________________________________________________________
 function codeRunTime( message )
 
-% Clock
-clockTime = clock;
-hours     = clockTime(4);
-minutes   = clockTime(5);
-
-% 12-hour
-if hours && hours < 12
-    meridian = 'a.m.';
-elseif hours == 12
-    meridian = 'p.m.';
-elseif hours > 12
-    hours    = hours - 12;
-    meridian = 'p.m.';
-else
-    hours    = 12;
-    meridian = 'a.m.';
-end
-
-% Trailling zero
-if minutes < 10
-    tm = '0';
-else
-    tm = '';
-end
-
-% Time text
-hoursText   = num2str( hours   );
-minutesText = num2str( minutes );
-timeText    = [ hoursText ':' tm minutesText ' ' meridian ];
+% Time
+theTimeIs = datetime( 'now' );
+theTimeIs = char( theTimeIs );
 
 % Print
 if exist( 'message', 'var' )
-    disp( [ message ' ' timeText ] );
+    disp( [ message ' ' theTimeIs ] )
 else
-    disp( timeText );
+    disp( theTimeIs )
 end
 
 
