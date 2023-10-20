@@ -714,7 +714,7 @@ for w = 1:nCentres
                 if all( isnan( timeFrequency ), 'all' )
                     disp( [ '[' 8 ':S  Missing data  :S' ']' 8 ] )
                     disp( [ '[' 8 '••••••••••••••••••••' ']' 8 ] )
-                    disp( [ '[' 8 currentMetric ' relative to the ' currentCentre ']' 8 ] )
+                    disp( [ '[' 8 'No ' currentMetric ' relative to the ' currentCentre ']' 8 ] )
                     disp( [ '[' 8 'For the ' iptnum2ordinal(p) ' participant' ']' 8 ] )
                     disp( [ '[' 8 'In the '  iptnum2ordinal(c) ' condition'   ']' 8 ] )
                     disp( ' ' )
