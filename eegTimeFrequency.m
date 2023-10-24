@@ -187,7 +187,7 @@ maxResponseTime  = 1600;
 minReactionTime  = 100;
 
 % Blending parameters
-blendingDuration = 80;              % Sigmoid blend time points around adjacent event
+blendingDuration = 80;              % Sigmoid blend time points around adjacent event (in ms)
 neighbourhood    = [3 30];          % Median blend neighbourhood of frequencies x time points
 order            = 5;               % Smoothing: Savitsky-Golay filter order
                                     %   Higher  is a closer fit -> less smoothing
@@ -285,7 +285,7 @@ if  contains( blending, 'm', 'IgnoreCase', true ) && ...
     blendingDuration = Inf;
 end
 
-% Blend adjustment for trials with no response 
+% Blend adjustment for trials with no response (in ms)
 if ~isinf( blendingDuration )
     adjustment   = blendingDuration/2;
 else
