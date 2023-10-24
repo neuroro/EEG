@@ -252,25 +252,36 @@ end
 %% Derived parameters
 % -------------------------------------------------------------------------
 
-% Times
+% Edge time
 longestCycle     = samplingRate/frequencyLimits(1);
 edge             = ceil( 1.5 * longestCycle );              % Edges are excised after decomposition to remove edge effects
-if isempty( baselineLimits ) || baselineLimits(1) > -200    % Start no later than -200 ms so that pre-stimulus data exists
-    startTime    = min( -200, ( responseLimits(1) + minReactionTime ) );
-else                                                        % Start at the lower baseline limit or at the lower response limit before the minimum reaction time
-    startTime    = min( baselineLimits(1), ( responseLimits(1) + minReactionTime ) );
+
+% Baseline time limits
+if   ~isempty( baselineLimits ) && ...
+   ( isscalar( baselineLimits ) || baselineLimits(2) == 0 )
+    baselineLimits = [ -abs( baselineLimits ) -1 ];         % Baseline up to the stimulus
 end
-if ~isempty( baselineLimits ) && baselineLimits(2) == 0
-    baselineLimits(2) = -1;                                 % Baseline up to the stimulus
+
+% Start time
+if   isempty( baselineLimits ) || ...
+   ( baselineLimits(1) > -200 && baselineLimits(1) <= 0 )
+    startPoint   = -200;                                    % Start no later than -200 ms so that pre-stimulus data exists
+else
+    startPoint   = baselineLimits(1);                       % Start at least as early as the baseline lower limit
 end
+earliestReaction = minReactionTime + responseLimits(1);     % Earliest possible reaction time is the response-centred window lower limit before the minimum reaction time
+startTime        = min( startPoint, earliestReaction );     % Start at the baseline lower limit or at the earliest possible reaction time
 startTime        = startTime - edge;
 startSeconds     = startTime / 1000;
-maxTrialTime     = maxResponseTime + responseLimits(2);
+
+% End time
+maxTrialTime     = maxReactionTime + responseLimits(2);
 endTime          = maxTrialTime + edge;
 endSeconds       = ( endTime + 1 ) / 1000;                  % Correction for pop_epoch
 
 % No blending for median filtering
-if contains( blending, 'm', 'IgnoreCase', true ) && ~contains( blending, 'sig', 'IgnoreCase', true )
+if  contains( blending, 'm', 'IgnoreCase', true ) && ...
+   ~contains( blending, 'sig', 'IgnoreCase', true )
     blendingDuration = Inf;
 end
 
@@ -449,8 +460,8 @@ for n = 1:nFiles
     end
 
     % Loop through: Conditions
-%     parfor c = 1:nConditions
-    for c = 1:nConditions
+    parfor c = 1:nConditions
+    % for c = 1:nConditions
 
         % Current condition event label
         condition     = conditions{c};
@@ -519,8 +530,8 @@ for n = 1:nFiles
             % Trial events
             currentTrialEvents  = EEG.epoch(trial).eventtype(:);
 
-            % Index of the first stimulus event in the epoch
-            iEpochEventStimulus = find( matches( currentTrialEvents, condition ), 1 );
+            % Index of the stimulus event closest to 0 ms in the epoch
+            iEpochEventStimulus = find( matches( currentTrialEvents, condition ) );
             if length( iEpochEventStimulus ) > 1
                 [ ~, iCurrentStimulus ] = min( abs( [ EEG.epoch(trial).eventlatency{iEpochEventStimulus} ] ) );
                 iEpochEventStimulus     = iEpochEventStimulus(iCurrentStimulus);
@@ -540,17 +551,27 @@ for n = 1:nFiles
                 nCentres = 1;
             end
 
-            % Trial event times (in ms) relative to the stimulus (at 0 ms)
-            stimulusTime     = EEG.epoch(trial).eventlatency{iEpochEventStimulus};
+            % Trial event times (in ms) relative to the stimulus (at 0 ms)            
+            switch nCentres
+
+                % Stimulus and response
+                case 2
+                    stimulusTime         = EEG.epoch(trial).eventlatency{iEpochEventStimulus};
+                    responseTime         = EEG.epoch(trial).eventlatency{iEpochEventResponse};
+
+                % Stimulus but no response
+                case 1
+                    stimulusTime         = EEG.epoch(trial).eventlatency{iEpochEventStimulus};
+                    responseTime         = EEG.times(end) - adjustment;             % Blend out by the end of the trial
+                    [ ~, iResponseTime ] = min( abs( EEG.times - responseTime ) );  % Correct for sampling rate
+                    responseTime         = EEG.times(iResponseTime);
+            end
+            centreTimes = [ stimulusTime responseTime ];
+
+            % Sanity check
             if stimulusTime ~= 0
                 disp( [ '[' 8 'Warning: Stimulus at ' num2str( stimulusTime ) ' for ' condition ' trial ' num2str( trial ) ']' 8 ] )
             end
-            if nCentres > 1    % Stimulus and response in the epoch
-                responseTime = EEG.epoch(trial).eventlatency{iEpochEventResponse};
-            else               % Stimulus only, no response
-                responseTime = EEG.times(end) - adjustment - 1; % Blend out by the end of the trial
-            end
-            centreTimes      = [ stimulusTime responseTime ];
 
             % Process trials with realistic reaction time (in ms)
             if responseTime >= minReactionTime
@@ -630,9 +651,9 @@ for n = 1:nFiles
                         centreDomain = centreDomains{centre}; % Times in ms relative to the centre event
                         blenderTime  = blenderTimes{centre};
                         if centre == 1
-                            blenderDuration = -blendDuration; % Blend out at the response
+                            blenderDuration = -blendDuration; % Stimulus-locked: Blend out at the response
                         else
-                            blenderDuration = blendDuration;  % Blend in at the stimulus
+                            blenderDuration = blendDuration;  % Response-locked: Blend in at the stimulus
                         end
 
                         % Pre-allocate open windows
@@ -643,7 +664,7 @@ for n = 1:nFiles
 
                         % Skip too-slow reactions found within the epoch
                         % leaving them as NaN
-                        if centre > 1 && responseTime > maxResponseTime
+                        if centre == 2 && responseTime > maxResponseTime
                             continue
                         end
 

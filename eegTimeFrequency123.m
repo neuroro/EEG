@@ -203,10 +203,10 @@ stimulusLimits   = [ -200 1000 ];   % Relative to stimulus time
 initiationLimits = [ -500 500  ];   % Relative to initiation time
 responseLimits   = [ -600 500  ];   % Relative to response time
 
-% Maximum reaction time for a trial to be valid
+% Maximum total reaction time for a trial to be valid
 maxReactionTime  = 1600;
 
-% Minimum reaction time for a trial to be valid
+% Minimum initation reaction time for a trial to be valid
 minReactionTime  = 100;
 
 % Blending parameters
@@ -275,25 +275,38 @@ end
 %% Derived parameters
 % -------------------------------------------------------------------------
 
-% Times
+% Edge time
 longestCycle     = samplingRate/frequencyLimits(1);
-edge             = ceil( 1.5 * longestCycle );              % Edges are excised after decomposition to remove edge effects
-if isempty( baselineLimits ) || baselineLimits(1) > -200    % Start no later than -200 ms so that pre-stimulus data exists
-    startTime    = min( -200, ( responseLimits(1) + minReactionTime ) );
-else                                                        % Start at the lower baseline limit or at the lower response limit before the minimum reaction time
-    startTime    = min( baselineLimits(1), ( responseLimits(1) + minReactionTime ) );
+edge             = ceil( 1.5 * longestCycle );                              % Edges are excised after decomposition to remove edge effects
+
+% Baseline time limits
+if   ~isempty( baselineLimits ) && ...
+   ( isscalar( baselineLimits ) || baselineLimits(2) == 0 )
+    baselineLimits = [ -abs( baselineLimits ) -1 ];                         % Baseline up to the stimulus
 end
-if ~isempty( baselineLimits ) && baselineLimits(2) == 0
-    baselineLimits(2) = -1;                                 % Baseline up to the stimulus
+
+% Start time
+if   isempty( baselineLimits ) || ...
+   ( baselineLimits(1) > -200 && baselineLimits(1) <= 0 )
+    startPoint   = -200;                                                    % Start no later than -200 ms so that pre-stimulus data exists
+else
+    startPoint   = baselineLimits(1);                                       % Start at least as early as the baseline lower limit
 end
+earliestReaction = minReactionTime + initiationLimits(1);                   % Earliest possible initiation time is the initiation-centred window lower limit before the minimum reaction time
+earliestResponse = minReactionTime + responseLimits(1) + 1000/samplingRate; % Earliest possible response time is the response-centred window lower limit before the minimum reaction time + 1 sample
+earliestReaction = min( earliestReaction, earliestResponse );
+startTime        = min( startPoint, earliestReaction );                     % Start at the baseline lower limit or at the earliest possible reaction time
 startTime        = startTime - edge;
 startSeconds     = startTime / 1000;
+
+% End time
 maxTrialTime     = maxReactionTime + responseLimits(2);
 endTime          = maxTrialTime + edge;
-endSeconds       = ( endTime + 1 ) / 1000;                  % Correction for pop_epoch
+endSeconds       = ( endTime + 1 ) / 1000;                                  % Correction for pop_epoch to give complete time points in the closed interval (f1,f2)
 
 % No blending for median filtering
-if contains( blending, 'm', 'IgnoreCase', true ) && ~contains( blending, 'sig', 'IgnoreCase', true )
+if  contains( blending, 'm', 'IgnoreCase', true ) && ...
+   ~contains( blending, 'sig', 'IgnoreCase', true )
     blendingDuration = Inf;
 end
 
@@ -301,7 +314,7 @@ end
 if ~isinf( blendingDuration )
     adjustment   = blendingDuration/2;
 else
-    adjustment   = 0;
+    adjustment   = 0; % In ms
 end
 
 % Frequencies
@@ -474,8 +487,8 @@ for n = 1:nFiles
     end
 
     % Loop through: Conditions
-%     parfor c = 1:nConditions
-    for c = 1:nConditions
+    parfor c = 1:nConditions
+    % for c = 1:nConditions
 
         % Current condition event label
         condition       = conditions{c};
@@ -545,8 +558,8 @@ for n = 1:nFiles
             % Trial events
             currentTrialEvents    = EEG.epoch(trial).eventtype(:);
 
-            % Index of the first stimulus event in the epoch
-            iEpochEventStimulus   = find( matches( currentTrialEvents, condition ), 1 );
+            % Index of the stimulus event closest to 0 ms in the epoch
+            iEpochEventStimulus   = find( matches( currentTrialEvents, condition ) );
             if length( iEpochEventStimulus ) > 1
                 [ ~, iCurrentStimulus ] = min( abs( [ EEG.epoch(trial).eventlatency{iEpochEventStimulus} ] ) );
                 iEpochEventStimulus     = iEpochEventStimulus(iCurrentStimulus);
@@ -580,21 +593,25 @@ for n = 1:nFiles
 
                 % Stimulus, initiation, and response
                 case 3
-                    stimulusTime   = EEG.epoch(trial).eventlatency{iEpochEventStimulus};
-                    initiationTime = EEG.epoch(trial).eventlatency{iEpochEventInitiation};
-                    responseTime   = EEG.epoch(trial).eventlatency{iEpochEventResponse};
+                    stimulusTime          = EEG.epoch(trial).eventlatency{iEpochEventStimulus};
+                    initiationTime        = EEG.epoch(trial).eventlatency{iEpochEventInitiation};
+                    responseTime          = EEG.epoch(trial).eventlatency{iEpochEventResponse};
 
                 % Stimulus and initiation, but no response
                 case 2
-                    stimulusTime   = EEG.epoch(trial).eventlatency{iEpochEventStimulus};
-                    initiationTime = EEG.epoch(trial).eventlatency{iEpochEventInitiation};
-                    responseTime   = EEG.times(end) - adjustment - 1; % Blend out by the end of the trial
+                    stimulusTime          = EEG.epoch(trial).eventlatency{iEpochEventStimulus};
+                    initiationTime        = EEG.epoch(trial).eventlatency{iEpochEventInitiation};
+                    responseTime          = EEG.times(end) - adjustment;                % Blend out by the end of the trial
+                    [ ~, iResponseTime ]  = min( abs( EEG.times - responseTime ) );     % Correct for sampling rate
+                    responseTime          = EEG.times(iResponseTime);
 
                 % Stimulus only, no initiation or response
                 case 1
-                    stimulusTime   = EEG.epoch(trial).eventlatency{iEpochEventStimulus};
-                    initiationTime = EEG.times(end) - adjustment - 1; % Blend out by the end of the trial
-                    responseTime   = NaN;
+                    stimulusTime          = EEG.epoch(trial).eventlatency{iEpochEventStimulus};
+                    initiationTime        = EEG.times(end) - adjustment;                % Blend out by the end of the trial
+                    [ ~, iInitiationTime] = min( abs( EEG.times - initiationTime ) );   % Correct for sampling rate
+                    initiationTime        = EEG.times(iInitiationTime);
+                    responseTime          = NaN;
 
             end
             centreTimes = [ stimulusTime initiationTime responseTime ];
@@ -675,7 +692,7 @@ for n = 1:nFiles
                     % Blender times
                     blenderTimes  = {   centreTimes(2)                  ... % Blend out at initiationTime
                                       [ centreTimes(1) centreTimes(3) ] ... % Blend in at stimulusTime and blend out at responseTime
-                                        centreTimes(2) };                   % Blend in at initiationTime
+                                        centreTimes(2)                  };  % Blend in at initiationTime
 
                     % Loop through: Event-locked centres
                     for centre = 1:nTrialCentres
