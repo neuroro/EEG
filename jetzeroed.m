@@ -94,20 +94,24 @@ end
 %% Jet-like colours
 %  ------------------------------------------------------------------------
 
-% RGB values for positive value colours
-maxPositive     = [0.5 0 0];    % Dark red
-midPositive     = [1 5/6 0];    % Yellow-orange
+% Positive value colours (RGB)
+positiveMaximum = [ 0.5  0   0  ];  % Dark red
+positiveMain    = [  1   0   0  ];  % Red
+positiveMiddle  = [  1  0.5  0  ];  % Orange
+positiveMinimum = [  1   1   0  ];  % Yellow
 
-% Zero colour
-fixedZero       = [5/6 1 5/6];  % Light sunrise green
+% Zero colour (RGB)
+fixedZero       = [ 0.7  1  0.7 ];  % Light sunrise green
 
-% Negative value colours
-midNegative     = [0 5/6 1];    % Blue-cyan
-minNegative     = [1/6 0 0.5];  % Warm indigo
+% Negative value colours (RGB)
+negativeMinimum = [  0   1   1  ];  % Cyan
+negativeMiddle  = [  0  0.5  1  ];  % Azure
+negativeMain    = [  0   0   1  ];  % Blue
+negativeMaximum = [  0   0  0.5 ];  % Indigo
 
 % Fixed colours
-fixedPositives  = [ fixedZero;   midPositive; maxPositive ];
-fixedNegatives  = [ minNegative; midNegative; fixedZero   ];
+fixedPositives  = [ fixedZero; positiveMinimum; positiveMiddle; positiveMain; positiveMaximum ];
+fixedNegatives  = [ negativeMaximum; negativeMain; negativeMiddle; negativeMinimum; fixedZero ];
 nFixedPositives = length( fixedPositives );
 nFixedNegatives = length( fixedNegatives );
 
