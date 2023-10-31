@@ -104,8 +104,8 @@ function Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, downsa
 % -------------------------------------------------------------------------
 
 % Local spectra mat files
-LOCALSPECTRA1 = 'TimeFrequencyFMidClusterAcuteJuice.mat';
-LOCALSPECTRA2 = 'TimeFrequencyFMidClusterAcutePlacebo.mat';
+LOCALSPECTRA1 = 'TimeFrequencyFMClusterAcuteJuice.mat';
+LOCALSPECTRA2 = 'TimeFrequencyClusterAcutePlacebo.mat';
 
 % Conditions
 CONDITION1    = 'Acute Juice';
@@ -125,7 +125,7 @@ if ~nargin
 end
 
 % Frequency band
-if ~exist( 'frequencyBand', 'var' ) || isempty( frequencyBand )
+if ~exist( 'frequencyBand', 'var' ) || nargin < 2
     frequencyBand = 'Theta+';
 end
 if isstring( frequencyBand )
@@ -138,7 +138,7 @@ if ~exist( 'timeLimits', 'var' ) || ( isscalar( timeLimits ) && ~timeLimits )
 end
 
 % Downsampling to speed up computation
-if ~exist( 'downsampling', 'var' )
+if ~exist( 'downsampling', 'var' ) || nargin < 4
     downsampling = 250;
 end
 
@@ -156,6 +156,9 @@ Data2           = load( spectraPath2 );
 
 ConditionField1 = strrep( CONDITION1, ' ', '' );
 ConditionField2 = strrep( CONDITION2, ' ', '' );
+iCondition1     = 1;
+iCondition2     = 1;
+nCentres        = 2;
 
 % Frequencies in the decomposition
 frequencies     = Data1.(WINDOWS{1}).Frequencies;
@@ -185,6 +188,11 @@ end
 
 %% Testing limits
 % -------------------------------------------------------------------------
+
+% All frequencies
+if isempty( frequencyBand )
+    frequencyBand = [ frequencies(1) frequencies(end) ];
+end
 
 % Frequency band limits
 [ frequencyBand, bandName ] = aprioriFrequencyBands( frequencyBand );
@@ -286,6 +294,7 @@ for iMetric = 1:2
         % Current event-centred window times
         iTimesLimited = iTime1:iTime2;
         timesLimited  = times(iTimesLimited);
+        nTimesLimited = length( timesLimited );
 
 
         %% Oscillatory data
@@ -305,8 +314,8 @@ for iMetric = 1:2
             grandAverage1 = grandAverage1(iFrequencyBand,iTimesLimited);
             grandAverage2 = grandAverage2(iFrequencyBand,iTimesLimited);
         else
-            grandAverage1 = grandAverage1(iCondition1,iFrequencyBand,iTimesLimited);
-            grandAverage2 = grandAverage2(iCondition1,iFrequencyBand,iTimesLimited);
+            grandAverage1 = squeeze( grandAverage1(iCondition1,iFrequencyBand,iTimesLimited) );
+            grandAverage2 = squeeze( grandAverage2(iCondition1,iFrequencyBand,iTimesLimited) );
         end
 
 
@@ -330,15 +339,25 @@ for iMetric = 1:2
         mask            = or( maskPositive, maskNegative );
 
         % Downsample using pop_resample for anti-aliasing
+%         spectraD        = NaN( N, nFrequencies, nTimesLimited );
+        spectraD        = [];
         if ~isempty( downsampling ) && downsampling && downsampling ~= samplingRate
             for p = 1:N
                 singleSpectra   = squeeze( oscillationsD(p,:,:) );
                 EEG             = eeg_emptyset();
+                EEG.data        = singleSpectra;
+                EEG.nbchan      = nFrequencies;
+                EEG.trials      = 1;
+                EEG.pnts        = nTimesLimited;
+                EEG.xmin        = 0;
+                EEG.xmax        = ( nTimesLimited - 1 ) / samplingRate;
                 EEG.srate       = samplingRate;
-                EEG             = pop_editset( EEG, 'data', singleSpectra );
+                EEG             = eeg_checkset( EEG );
                 EEG             = pop_resample( EEG, downsampling );
                 spectraD(p,:,:) = EEG.data;                                 %#ok
             end
+        else
+            spectraD    = oscillationsD;
         end
 
         % Distance between each time-frequency point for clustering
@@ -346,7 +365,6 @@ for iMetric = 1:2
         distances       = spectralDistances( spectraD );
 
         % Collapse frequencies and times into one dimension for testing
-        nFrequencies    = size( oscillationsD, 2 );
         nTimes          = size( spectraD, 3 );
         spectraD        = reshape( spectraD, N, nFrequencies * nTimes );
         spectraD        = spectraD';
@@ -367,12 +385,19 @@ for iMetric = 1:2
         Stats.(eventWindow).(metric).Stats.(ConditionField2) = descriptiveStatistics( oscillations2(:) );
 
         % Extrema distributions
-        if ~isnan( p(2) ) && isnan( p(3) )
-            data1Values = oscillations1 .* maskPositive;
-            data2Values = oscillations2 .* maskPositive;
-        elseif isnan( p(2) ) && ~isnan( p(3) )
-            data1Values = oscillations1 .* maskNegative;
-            data2Values = oscillations2 .* maskNegative;
+        % Overall maximum and direction
+        if ~isnan( p(2) ) && ( p(2) < p(3) || isnan( p(3) ) )
+            data1Values = grandAverage1 .* maskPositive;
+            data2Values = grandAverage2 .* maskPositive;
+        elseif ~isnan( p(3) ) && ( p(3) < p(2) || ~isnan( p(2) ) )
+            data1Values = grandAverage1 .* maskNegative;
+            data2Values = grandAverage2 .* maskNegative;
+        elseif isnan( p(2) ) && isnan( p(3) )
+            data1Values = grandAverage1 .* NaN;
+            data2Values = grandAverage2 .* NaN;
+        else
+            data1Values = grandAverage1 .* mask;
+            data2Values = grandAverage2 .* mask;
         end
         data1Values(data1Values == 0) = NaN;
         data2Values(data2Values == 0) = NaN;
@@ -384,30 +409,32 @@ for iMetric = 1:2
 
         % Plot grand average 1
         plotTimeFrequency( grandAverage1, frequenciesBand, timesLimited )
-        figName = [ eventWindow '-Related ' metric ' Under ' CONDITION1 ];
+        figName = [ eventWindow '-Related ' bandName ' ' metric ' Under ' CONDITION1 ];
         title( figName )
-        colormap JuiceZeroed
+        colormap( JuiceZeroed() )
         savefig( figName )
 
         % Plot grand average 2
         plotTimeFrequency( grandAverage2, frequenciesBand, timesLimited )
-        figName = [ eventWindow '-Related ' metric ' Under ' CONDITION2 ];
+        figName = [ eventWindow '-Related ' bandName ' ' metric ' Under ' CONDITION2 ];
         title( figName )
-        colormap JuiceZeroed
+        colormap( JuiceZeroed() )
         savefig( figName )
 
         % Plot masked differences
-        plotTimeFrequency( oscillationsD.*mask, frequenciesBand, timesLimited )
-        figName = [ eventWindow '-Related ' metric ' ' CONDITION1 ' - ' CONDITION2 ' Differences' ];
+        maskedD = squeeze( meanDifferences ) .* mask;
+        plotTimeFrequency( maskedD, frequenciesBand, timesLimited )
+        figName = [ eventWindow '-Related ' bandName ' ' metric ' ' CONDITION1 ' - ' CONDITION2 ' Differences' ];
         title( figName )
-        colormap JuiceZeroed
+        colormap( JuiceZeroed() )
         savefig( figName )
 
         % Plot masked t-map
-        plotTimeFrequency( tStats.*mask, frequenciesBand, timesLimited )
-        figName = [ 'T-Map of ' eventWindow '-Related ' metric ' ' CONDITION1 ' - ' CONDITION2 ' Differences' ];
+        maskedT = tStats .* mask;
+        plotTimeFrequency( maskedT, frequenciesBand, timesLimited )
+        figName = [ 'T-Map of ' eventWindow '-Related ' bandName ' ' metric ' ' CONDITION1 ' - ' CONDITION2 ' Differences' ];
         title( figName )
-        colormap JuiceZeroed
+        colormap( JuiceZeroed() )
         savefig( figName )
 
         % !!! PLOT DISTRIBUTIONS AS VIOLINS !!!
