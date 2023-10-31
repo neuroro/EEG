@@ -46,14 +46,16 @@ spectralPeaks( fileNamePart, method, frequencyBand, timeLimit, peakSize )
 %
 %   frequencyBand: Frequency band (named) or frequency range (limits)
 %                   within which to find peaks or sinks
-%                    'Delta'     1 to <4 Hz
-%                    'Theta'     4 to <8 Hz
-%                    'ThetaX'  2.5 to 8.5 Hz
-%                    'Theta++'   2 to 10 Hz
-%                    'Alpha'     8 to <13 Hz
-%                    'Beta'     13 to 30 Hz
-%                    'Gamma'   >30 to 80 Hz
-%                    [f1 f2]    f1 to f2 Hz frequency range
+%                    'Delta'        1 to <4 Hz
+%                    'Theta'        4 to <8 Hz
+%                    'Theta+'     2.5 to 8.5 Hz
+%                    'Theta++'      2 to 10 Hz
+%                    'Alpha'        8 to <13 Hz
+%                    'Beta'        13 to 30 Hz
+%                    'Gamma'      >30 to 80 Hz
+%                    'Low Gamma'  >30 to 50 Hz
+%                    'High Gamma' >50 to 80 Hz
+%                    [f1 f2]      f1 to f2 Hz frequency range
 %                   (optional input: default theta extended to 2.5-8.5 Hz)
 %
 %   timeLimit:     Time limit or limits (in ms) to find peaks within as a
@@ -205,7 +207,7 @@ grandFields    = fieldnames( LocalSpectra.(eventCentres{1}).GrandAverage );
 iMiscFields    = contains( grandFields, { 'Dimension' 'Unit' }, 'IgnoreCase', true );
 metrics        = grandFields(~iMiscFields);
 nMetrics       = length( metrics );
-iPower         = contains( metrics, 'Power',     'IgnoreCase', true );
+iPower         = and( contains( metrics, 'Power', 'IgnoreCase', true ), ~contains( metrics, 'Baseline', 'IgnoreCase', true ) );
 iCoherence     = contains( metrics, 'Coherence', 'IgnoreCase', true );
 
 % Conditions
@@ -816,6 +818,8 @@ theta      = { 'Theta' 'T' };
 alpha      = { 'Alpha' 'A' };
 beta       = { 'Beta'  'B' };
 gamma      = { 'Gamma' 'G' };
+lowGamma   = { 'Low Gamma'  'LowGamma'  'Gamma1' 'G1' };
+highGamma  = { 'High Gamma' 'HighGamma' 'Gamma2' 'G2' };
 
 % Organisation for Human Brain Mapping definitions (Pernet et al., 2018)
 deltaBand  = [ 1       3.999  ];
@@ -824,13 +828,18 @@ alphaBand  = [ 8       12.999 ];
 betaBand   = [ 13      30     ];
 gammaBand  = [ 30.001  80     ];
 
-% Extended theta peak finding window
-thetaExt   = { 'ThetaExtended' 'ThetaEx' 'ThetaX' 'Thex' 'Tx' };
-thetaExtF  = [ 2.5 8.5 ];
+% Gamma-band divisions
+gammaBand1 = [ 30.001  50     ];
+gammaBand2 = [ 50.001  80     ];
+
+% Extended theta+ peak finding window
+thetaX     = { 'Theta+'  'T+'  'Tp'    'ThetaPlus'  'ThetaExtended'  'Tx' };
+thetaXF    = [ 2.5 8.5 ];
 
 % 2-10 Hz theta++ peak finding window (Gyurkovics & Levita, 2021) 
-thetaPlus  = { 'ThetaPlus2' 'ThetaPlus' 'Theta++' 'Theta+' 'T+' 'T2' 'Tp' 'ThetaGyurkovicsLevita' 'ThetaGL' 'TGL' 'GL' };
-thetaPlusF = [ 2 10 ];
+thetaX2    = { 'Theta++' 'T++' 'Tpp'   'ThetaPlus2' 'ThetaPlusPlus' ...
+               'ThetaGyurkovicsLevita' 'ThetaGL'    'TGL'           };
+thetaX2F   = [ 2 10 ];
 
 % Frequency limits
 if ischar( frequencyBand )
@@ -850,12 +859,18 @@ if ischar( frequencyBand )
         case lower( gamma )
             frequencyLimits = gammaBand;
             bandName        = gamma{1};
-        case lower( thetaExt )
-            frequencyLimits = thetaExtF;
-            bandName        = thetaExt{1};
-        case lower( thetaPlus )
-            frequencyLimits = thetaPlusF;
-            bandName        = thetaPlus{1};
+        case lower( lowGamma )
+            frequencyLimits = gammaBand1;
+            bandName        = lowGamma{2};
+        case lower( highGamma )
+            frequencyLimits = gammaBand2;
+            bandName        = highGamma{2};
+        case lower( thetaX )
+            frequencyLimits = thetaXF;
+            bandName        = thetaX{1};
+        case lower( thetaX2 )
+            frequencyLimits = thetaX2F;
+            bandName        = thetaX2{1};
     end
 elseif isnumeric( frequencyBand )
             frequencyLimits = frequencyBand;
