@@ -115,30 +115,35 @@ participantCode = 'P';
 % !!! INPUT YOUR PARTICPANT CODE PREFIX !!!
 
 
+% Event-related windows in order
+EventRelatedWindows.Window1 = 'Stimulus';
+EventRelatedWindows.Window2 = 'Response';
+
+
 % Stimulus event labels for each condition
 % -------------------------------------------------------------------------
 % Trials are assumed to contain a stimulus presentation event labelled per
 % condition that are extracted separately and a response-decision event
 
 % Generic task
-C.Task        = { 'Stimulus' };
+ConditionEvents.Task        = { 'Stimulus' };
 
 % Sternberg memory task probes
-C.Probes      = { 'STI5' 'STI7' 'STI9' };
+ConditionEvents.Probes      = { 'STI5' 'STI7' 'STI9' };
 
 % Standard recognition task
-C.Recognition = { 'Familiar' 'Recognised' 'Misidentified'     ...
+ConditionEvents.Recognition = { 'Familiar' 'Recognised' 'Misidentified'     ...
                   'KnownUnverified' 'UnfamiliarUnverified'    ...
                   'ControlTrueUnfamiliar' 'ControlFalseKnown' };
 
 % Altruism reward task
-C.Altruism    = { 'AccH' 'AccM' 'AccL' 'ShaH' 'ShaM' 'ShaL' };
+ConditionEvents.Altruism    = { 'AccH' 'AccM' 'AccL' 'ShaH' 'ShaM' 'ShaL' };
 
 % !!! INPUT YOUR CONDITIONS !!!
-conditions    = C.Task;
-% conditions    = C.Probes;
-% conditions    = C.Recognition;
-% conditions    = C.Altruism;
+conditions                  = ConditionEvents.Task;
+% conditions                  = ConditionEvents.Probes;
+% conditions                  = ConditionEvents.Recognition;
+% conditions                  = ConditionEvents.Altruism;
 
 
 % Resonse event labels
@@ -148,23 +153,23 @@ conditions    = C.Task;
 % not extracted separately
 
 % Generic task
-R.Task        = { 'Response' };
+ResponseEvents.Task        = { 'Response' };
 
 % Sternberg memory task responses
-R.Probes      = { 'CIL5' 'CIL7' 'CIL9' 'COL5' 'COL7' 'COL9' ...
+ResponseEvents.Probes      = { 'CIL5' 'CIL7' 'CIL9' 'COL5' 'COL7' 'COL9' ...
                   'IIL5' 'IIL7' 'IIL9' 'IOL5' 'IOL7' 'IOL9' };
 
 % Standard recognition task
-R.Recognition = { 'S  4' 'S  8' };
+ResponseEvents.Recognition = { 'S  4' 'S  8' };
 
 % Altruism reward task
-R.Altruism    = { 'Resp' };
+ResponseEvents.Altruism    = { 'Resp' };
 
 % !!! INPUT YOUR RESPONSE TYPES !!!
-responses     = R.Task;
-% responses     = R.Probes;
-% responses     = R.Recognition;
-% responses     = R.Altruism;
+responses                  = ResponseEvents.Task;
+% responses                  = R.Probes;
+% responses                  = R.Recognition;
+% responses                  = R.Altruism;
 
 
 % Time parameters
@@ -251,6 +256,9 @@ end
 
 %% Derived parameters
 % -------------------------------------------------------------------------
+
+% Events that trial windows are centred on
+trialCentres     = struct2cell( EventRelatedWindows );
 
 % Edge time
 longestCycle     = samplingRate/frequencyLimits(1);
@@ -476,7 +484,6 @@ for n = 1:nFiles
 
         % Pre-allocate
         Decomposition = [];
-        trialCentres  = { 'Stimulus' 'Response' };
         nTrialCentres = length( trialCentres );
         for tc = 1:nTrialCentres
             Decomposition.(trialCentres{tc}).SpectralPower  = [];
@@ -729,9 +736,9 @@ for n = 1:nFiles
                         Decomposition.(trialCentre).TimesUnits                   = 'milliseconds';
                         Decomposition.(trialCentre).SamplingRate                 = samplingRate;
                         Decomposition.(trialCentre).SamplingRateUnits            = 'Hz';
-                        Decomposition.(trialCentre).BaselinePowerSpectrum        = baseline;
-                        Decomposition.(trialCentre).BaselinePowerSpectrumUnits   = 'Decibel volts^2';
-                        Decomposition.(trialCentre).BaselineTimeLimits           = baselineLimit;
+                        Decomposition.(trialCentre).BaselinePower(trial,ch,:)    = baseline;
+                        Decomposition.(trialCentre).BaselinePowerUnits           = 'Decibel volts^2';
+                        Decomposition.(trialCentre).BaselinePowerDimensions      = 'Trials x Channels x Frequencies';
                         Decomposition.(trialCentre).ChannelNames                 = channelSet;
                         Decomposition.(trialCentre).ChannelIndices               = channels;
                         Decomposition.(trialCentre).ChannelCoordinates           = EEG.chanlocs;
