@@ -67,8 +67,10 @@ eegTimeFrequency123( setName, frequencyLimits, frequencyResolution, blending )
 %
 % !!! Requires !!!
 % 
-% waveletTransform.m by Rohan King (2023) https://github.com/neuroro/EEG/blob/main/waveletTransform.m
-% spectralBlender.m  by Rohan King (2023) https://github.com/neuroro/EEG/blob/main/spectralBlender.m
+% waveletTransform.m by Rohan King (2023) available at 
+%  https://github.com/neuroro/EEG/blob/main/waveletTransform.m
+% spectralBlender.m  by Rohan King (2023) available at 
+%  https://github.com/neuroro/EEG/blob/main/spectralBlender.m
 % EEGLAB
 %
 % • Author •
@@ -89,6 +91,9 @@ eegTimeFrequency123( setName, frequencyLimits, frequencyResolution, blending )
 % Public License for more details (https://www.gnu.org/licenses/).
 %
 % Please cite this code if you use it
+%
+% King, R. (2023). eegTimeFrequency123 [MATLAB code]. GitHub. 
+%  https://github.com/neuroro/EEG/eegTimeFrequency123.m
 
 
 % Introduction
@@ -112,10 +117,16 @@ disp( ' ' )
 % For example 'P' 'S' 'Participant' 'sub-'
 participantPrefix = 'P';
 
-% Standard recognition task familiarity recode prefix
+% Eriksen Flanker task prefix
 % participantPrefix = 'Flanker';
 
 % !!! INPUT YOUR PARTICPANT CODE PREFIX !!!
+
+
+% Event-related windows in order
+EventRelatedWindows.Window1 = 'Stimulus';
+EventRelatedWindows.Window2 = 'Initiation';
+EventRelatedWindows.Window3 = 'Response';
 
 
 % Stimulus event labels for each condition
@@ -125,21 +136,21 @@ participantPrefix = 'P';
 % and a response decision event
 
 % Generic task
-C.Task            = { 'Stimulus' };
+ConditionEvents.Task    = { 'Stimulus' };
 
 % Eriksen flanker task
-C.Flanker         = { 'cC-R' ...
-                      'cC-S' ...
-                      'iC-R' ...
-                      'iC-S' ...
-                      'cI-R' ...
-                      'cI-S' ...
-                      'iI-R' ...
-                      'iI-S' };
+ConditionEvents.Flanker = { 'cC-R' ...
+                            'cC-S' ...
+                            'iC-R' ...
+                            'iC-S' ...
+                            'cI-R' ...
+                            'cI-S' ...
+                            'iI-R' ...
+                            'iI-S' };
 
 % !!! INPUT YOUR CONDITIONS !!!
-conditions        = C.Task;
-% conditions        = C.Flanker;
+conditions              = ConditionEvents.Task;
+% conditions              = ConditionEvents.Flanker;
 
 
 % Initiation event label
@@ -148,10 +159,10 @@ conditions        = C.Task;
 % initiation of response event, and a response decision event
 
 % Generic task
-I.Task            = { 'Initiation' };
+InitiationEvents.Task    = { 'Initiation' };
 
 % Eriksen flanker task
-I.Flanker         = { 'cC-R-Init' ...
+InitiationEvents.Flanker = { 'cC-R-Init' ...
                       'cC-S-Init' ...
                       'iC-R-Init' ...
                       'iC-S-Init' ...
@@ -161,8 +172,8 @@ I.Flanker         = { 'cC-R-Init' ...
                       'iI-S-Init' };
 
 % !!! INPUT YOUR INITIATION !!!
-initiation         = I.Task;
-% initiation         = I.Flanker
+initiation               = InitiationEvents.Task;
+% initiation               = InitiationEvents.Flanker;
 
 
 % Resonse event labels
@@ -172,21 +183,21 @@ initiation         = I.Task;
 % labelled per response type but are not extracted separately
 
 % Generic task
-R.Task            = { 'Response' };
+ResponseEvents.Task    = { 'Response' };
 
 % Eriksen flanker task
-R.Flanker         = { 'cC-R-Resp' ...
-                      'cC-S-Resp' ...
-                      'iC-R-Resp' ...
-                      'iC-S-Resp' ...
-                      'cI-R-Resp' ...
-                      'cI-S-Resp' ...
-                      'iI-R-Resp' ...
-                      'iI-S-Resp' };
+ResponseEvents.Flanker = { 'cC-R-Resp' ...
+                           'cC-S-Resp' ...
+                           'iC-R-Resp' ...
+                           'iC-S-Resp' ...
+                           'cI-R-Resp' ...
+                           'cI-S-Resp' ...
+                           'iI-R-Resp' ...
+                           'iI-S-Resp' };
 
 % !!! INPUT YOUR RESPONSE TYPES !!!
-responses         = R.Task;
-% responses         = R.Flanker
+responses              = ResponseEvents.Task;
+% responses              = ResponseEvents.Flanker;
 
 
 % Time parameters
@@ -204,10 +215,10 @@ initiationLimits = [ -500 500  ];   % Relative to initiation time
 responseLimits   = [ -600 500  ];   % Relative to response time
 
 % Maximum total reaction time for a trial to be valid
-maxReactionTime  = 1600;
+maxReactionTime  = 1500;
 
 % Minimum initation reaction time for a trial to be valid
-minReactionTime  = 100;
+minReactionTime  = 75;
 
 % Blending parameters
 blendingDuration = 80;              % Sigmoid blend time points around adjacent event (in ms)
@@ -225,27 +236,27 @@ nTrialsMinimum   = 10;              % Time points with fewer trials than this nu
 % -------------------------------------------------------------------------
 % For example '10-10' '10-20' 'Indices' 'Brain Products' 'Biosemi' 'EGI'
 
-capSystem = 'EGI';
+capSystem = 'International';
 
 
 % Channels of interest
 % -------------------------------------------------------------------------
 
 % International 10-10 system
-ChannelSets.Frontal1010      = { 'Fz'  'F3'  'F4' };
+ChannelSets.Frontal1010      = { 'Fz'  'F3'  'F4' 'FCz' };
 ChannelSets.Parietal1010     = { 'PO7' 'PO8' 'P7' 'P8'  };
 ChannelSets.Occipital1010    = {};
 ChannelSets.Temporal1010     = {};
 
 % EGI system
-ChannelSets.FrontalEGI       = { 'E11' 'E5'  'E12' 'E6'  };                 % { 'E24' 'E19' 'E11' 'E4' 'E124' 'E12' 'E5' 'E6' };
-ChannelSets.ParietalEGI      = { 'E65' 'E90' 'E58' 'E96' };                 % { 'E52' 'E60' 'E61' 'E62' 'E78' 'E85' 'E92'     };
+ChannelSets.FrontalEGI       = { 'E11' 'E5'  'E12' 'E6'  };
+ChannelSets.ParietalEGI      = { 'E65' 'E90' 'E58' 'E96' };
 ChannelSets.OccipitalEGI     = {};
 ChannelSets.TemporalEGI      = {};
 
 % Indices in the EEG data
-ChannelSets.FrontalIndices   = [ 11 5  12 6  ];                             % [ 24 19 11 4  124 5  12 6 ];
-ChannelSets.ParietalIndices  = [ 65 90 58 96 ];                             % [ 52 60 61 62 78  85 92   ];
+ChannelSets.FrontalIndices   = [ 11 5  12 6  ];
+ChannelSets.ParietalIndices  = [ 65 90 58 96 ];
 ChannelSets.OccipitalIndices = [];
 ChannelSets.TemporalIndices  = [];
 
@@ -274,6 +285,9 @@ end
 
 %% Derived parameters
 % -------------------------------------------------------------------------
+
+% Events that trial windows are centred on
+trialCentres     = struct2cell( EventRelatedWindows );
 
 % Edge time
 longestCycle     = samplingRate/frequencyLimits(1);
@@ -343,6 +357,10 @@ if ischar( conditions )
     conditions   = { conditions };
 end
 nConditions      = length( conditions );
+conditionsNames  = cell( 1, nConditions );
+for cn = 1:nConditions
+    conditionsNames{cn} = char( join( conditions{cn} ) );
+end
 
 
 %% EEGLAB dataset files
@@ -477,18 +495,19 @@ for n = 1:nFiles
     end
 
     % Channel indices for named channels input
-    if iscell( channelSet )
+    channelsSet     = channelSet;
+    if iscell( channelsSet )
         % Compare the channel names to the channel co-ordinates labels in
         % the chanlocs.labels field
-        iChannelSet = eeg_chaninds( CurrentEEG, channelSet );
-    elseif isnumeric( channelSet )
-        iChannelSet = channelSet;
-        channelSet  = { CurrentEEG.chanlocs(iChannelSet).labels };
+        iChannelSet = eeg_chaninds( CurrentEEG, channelsSet );
+    elseif isnumeric( channelsSet )
+        iChannelSet = channelsSet;
+        channelsSet = { CurrentEEG.chanlocs(iChannelSet).labels };
     end
 
     % Loop through: Conditions
-    parfor c = 1:nConditions
-    % for c = 1:nConditions
+%    parfor c = 1:nConditions
+    for c = 1:nConditions
 
         % Current condition event label
         condition       = conditions{c};
@@ -504,7 +523,6 @@ for n = 1:nFiles
 
         % Pre-allocate
         Decomposition   = [];
-        trialCentres    = { 'Stimulus' 'Initiation' 'Response' };
         nTrialCentres   = length( trialCentres );
         for tc = 1:nTrialCentres
             Decomposition.(trialCentres{tc}).SpectralPower  = [];
@@ -519,24 +537,24 @@ for n = 1:nFiles
 
         % Deal with conditions in which there is only one trial or none at all
         eegEvents            = { EEG.event(:).type };
-        iStimulusEvent       = strcmpi( condition, eegEvents );
+        iStimulusEvent       = matches( eegEvents, condition );
         if sum( iStimulusEvent ) == 1
             singleTrial      = true;
-            disp( [ '[' 8 'Warning: Single trial for ' condition ']' 8 ] )
+            disp( [ '[' 8 'Warning: Single trial for ' conditionsNames{c} ']' 8 ] )
             % Duplicate single trial stimulus event so EEGLAB produces epochs
             iStimulus        = find( iStimulusEvent );
             EEG.event(end+1) = EEG.event(iStimulus);
             EEG              = pop_editeventvals( EEG, 'sort', { 'latency', 0 } );
             EEG              = eeg_checkset( EEG );
         elseif ~any( iStimulusEvent )
-            disp( [ '[' 8 'Warning: No trials for ' condition ']' 8 ] )
+            disp( [ '[' 8 'Warning: No trials for ' conditionsNames{c} ']' 8 ] )
             continue
         else
             singleTrial      = false;
         end
         
         % Epoch trials
-        EEG     = pop_epoch( EEG, { condition }, [startSeconds endSeconds], 'epochinfo', 'yes' );
+        EEG     = pop_epoch( EEG, condition, [startSeconds endSeconds], 'epochinfo', 'yes' );
         EEG     = eeg_checkset( EEG );
         nTrials = length( EEG.epoch );
 
@@ -553,7 +571,9 @@ for n = 1:nFiles
         skipCount = 0;    % Count of unrealistic trials at the start
 
         % Loop through: Trials
+        fprintf( 'Trial' )
         for trial = 1:nTrials
+            fprintf( [ ' ' num2str( trial ) ] )
 
             % Trial events
             currentTrialEvents    = EEG.epoch(trial).eventtype(:);
@@ -618,7 +638,7 @@ for n = 1:nFiles
 
             % Sanity check
             if stimulusTime ~= 0
-                disp( [ '[' 8 'Warning: Stimulus at ' num2str( stimulusTime ) ' for ' condition ' trial ' num2str( trial ) ']' 8 ] )
+                disp( [ '[' 8 'Warning: Stimulus at ' num2str( stimulusTime ) ' for ' conditionsNames{c} ' trial ' num2str( trial ) ']' 8 ] )
             end
 
             % Process trials with realistic initiation of response (in ms)
@@ -800,10 +820,12 @@ for n = 1:nFiles
                         Decomposition.(trialCentre).TimesUnits                   = 'milliseconds';
                         Decomposition.(trialCentre).SamplingRate                 = samplingRate;
                         Decomposition.(trialCentre).SamplingRateUnits            = 'Hz';
-                        Decomposition.(trialCentre).BaselinePowerSpectrum        = baseline;
-                        Decomposition.(trialCentre).BaselinePowerSpectrumUnits   = 'Decibel volts^2';
+                        Decomposition.(trialCentre).BaselinePower(trial,ch,:)    = baseline;
+                        Decomposition.(trialCentre).BaselinePowerUnits           = 'Decibel volts^2';
+                        Decomposition.(trialCentre).BaselinePowerDimensions      = 'Trials x Channels x Frequencies';
                         Decomposition.(trialCentre).BaselineTimeLimits           = baselineLimit;
-                        Decomposition.(trialCentre).ChannelNames                 = channelSet;
+                        Decomposition.(trialCentre).BaselineTimeLimitsUnits      = 'milliseconds';
+                        Decomposition.(trialCentre).ChannelNames                 = channelsSet;
                         Decomposition.(trialCentre).ChannelIndices               = channels;
                         Decomposition.(trialCentre).ChannelCoordinates           = EEG.chanlocs;
                         Decomposition.(trialCentre).BlendTimes(trial,:)          = blenderTime - centreTimes(centre);
@@ -940,14 +962,14 @@ for n = 1:nFiles
         % File name
         [ iP, iXn ]  = regexp( currentFile, [ participantPrefix '[0-9]+' ] );
         participant  = currentFile(iP:iXn);
-        fileName     = [ 'TimeFrequencyData' participant condition ];
+        fileName     = [ 'TimeFrequencyData' participant conditionsNames{c} ];
         fileFullPath = fullfile( currentFolder, fileName );
 
         % Save .mat file
         timeFrequencyParallelSave( fileFullPath, Decomposition )
 
         % Single completion time
-        timeText    = [ currentFile ' condition ' condition ' decomposition completed at' ];
+        timeText    = [ currentFile ' condition ' conditionsNames{c} ' decomposition completed at' ];
         timeFrequencyRunTime( timeText )
 
         
