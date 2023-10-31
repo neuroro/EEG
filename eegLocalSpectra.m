@@ -199,26 +199,38 @@ while determining
         eventCentres  = fieldnames( Decomposition );
         nCentres      = length( eventCentres );
 
-        % Store conditions in struct
+        % Conditions
         for w = 1:nCentres
             LocalSpectra.(eventCentres{w}).Conditions = conditions;
         end
 
         % Frequencies
         for w = 1:nCentres
-            LocalSpectra.(eventCentres{w}).Frequencies      = Decomposition.(eventCentres{w}).Frequencies;
-            LocalSpectra.(eventCentres{w}).FrequenciesUnits = 'Hz';
+            LocalSpectra.(eventCentres{w}).Frequencies          = Decomposition.(eventCentres{w}).Frequencies;
+            try
+                LocalSpectra.(eventCentres{w}).FrequenciesUnits = Decomposition.(eventCentres{w}).FrequenciesUnits;
+            catch
+                LocalSpectra.(eventCentres{w}).FrequenciesUnits = 'Hz';
+            end
         end
-        nFrequencies  = length( LocalSpectra.(eventCentres{1}).Frequencies );
+        nFrequencies = length( LocalSpectra.(eventCentres{1}).Frequencies );
 
         % Times
         %   Time points vary per window centre
         for w = 1:nCentres
-            LocalSpectra.(eventCentres{w}).Times      = Decomposition.(eventCentres{w}).Times;
-            LocalSpectra.(eventCentres{w}).TimesUnits = 'milliseconds';
-            nTimes.(eventCentres{w})                  = length( LocalSpectra.(eventCentres{w}).Times );
+            LocalSpectra.(eventCentres{w}).Times                 = Decomposition.(eventCentres{w}).Times;
+            try
+                LocalSpectra.(eventCentres{w}).TimesUnits        = Decomposition.(eventCentres{w}).TimesUnits;
+                LocalSpectra.(eventCentres{w}).SamplingRate      = Decomposition.(eventCentres{w}).SamplingRate;
+                LocalSpectra.(eventCentres{w}).SamplingRateUnits = Decomposition.(eventCentres{w}).SamplingRateUnits = 'Hz';
+            catch
+                LocalSpectra.(eventCentres{w}).TimesUnits        = 'milliseconds';
+                LocalSpectra.(eventCentres{w}).SamplingRate      = [];
+                LocalSpectra.(eventCentres{w}).SamplingRateUnits = 'Hz';
+            end
+            nTimes.(eventCentres{w}) = length( LocalSpectra.(eventCentres{w}).Times );
         end
-
+        
         % Check decomposition fields exist
         for w = 1:nCentres
             fieldCheck = Decomposition.(eventCentres{w}).SpectralPower;                     %#ok
