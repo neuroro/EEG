@@ -134,7 +134,7 @@ EventRelatedWindows.Window2 = 'Response';
 ConditionEvents.Task        = { 'Stimulus' };
 
 % Sternberg memory task probes
-ConditionEvents.Probes      = { { 'STI5' 'STI7' 'STI9' } { 'STI5' 'STI7' } { 'STI9' } };
+ConditionEvents.Probes      = { 'STI5' 'STI7' 'STI9' };
 
 % Standard recognition task
 ConditionEvents.Recognition = { 'Familiar' 'Recognised' 'Misidentified'     ...
@@ -191,7 +191,7 @@ stimulusLimits   = [ -200 1000 ];   % Relative to stimulus time
 responseLimits   = [ -600 500  ];   % Relative to response time
 
 % Maximum response time for a trial to be valid
-maxResponseTime  = 2000;
+maxResponseTime  = 1500;
 
 % Minimum reaction time for a trial to be valid
 minReactionTime  = 75;
@@ -212,7 +212,7 @@ nTrialsMinimum   = 10;              % Time points with fewer trials than this nu
 % -------------------------------------------------------------------------
 % For example '10-10' '10-20' 'Indices' 'Brain Products' 'Biosemi' 'EGI'
 
-capSystem = 'Indices'; % 'International';
+capSystem = 'EGI'; % 'International';
 
 
 % Channels of interest
@@ -225,14 +225,14 @@ ChannelSets.Occipital1010    = {};
 ChannelSets.Temporal1010     = {};
 
 % EGI system
-ChannelSets.FrontalEGI       = { 'E11' 'E24' 'E124' };                      % { 'E24' 'E19' 'E11' 'E4' 'E124' 'E12' 'E5' 'E6' };
-ChannelSets.ParietalEGI      = { 'E65' 'E90' 'E58' 'E96' };                 % { 'E52' 'E60' 'E61' 'E62' 'E78' 'E85' 'E92'     };
+ChannelSets.FrontalEGI       = { 'E11'  'E19' 'E4'  'E24' 'E124' , 'E16'  'E18' 'E10'  'E23' 'E3' , 'E12' 'E5' , 'E6'  'E13' 'E112' };  % { 'E11' 'E24' 'E124' };
+ChannelSets.ParietalEGI      = {}; % { 'E62'  'E61' 'E78'  'E60' 'E85'  'E52' 'E92' , 'E65' 'E90'  'E59' 'E91'  'E58' 'E96' };                % { 'E65' 'E90' 'E58' 'E96' };
 ChannelSets.OccipitalEGI     = {};
 ChannelSets.TemporalEGI      = {};
 
 % Indices in the EEG data
-ChannelSets.FrontalIndices   = [ 11  19 4  24 124 , 16  18 10  23 3 , 12 5 , 6  12 112 ];   % [ 11 24 124 ];
-ChannelSets.ParietalIndices  = [ 62  61 78  60 85  52 92 , 65 90  59 91  58 96 ];           % [ 65 90 58 96 ];
+ChannelSets.FrontalIndices   = [ 11 24 124 ];
+ChannelSets.ParietalIndices  = [ 65 90 58 96 ];
 ChannelSets.OccipitalIndices = [];
 ChannelSets.TemporalIndices  = [];
 
@@ -467,21 +467,25 @@ for n = 1:nFiles
     end
 
     % Channel indices for named channels input
+    channelsSet     = channelSet;
     if iscell( channelSet )
         % Compare the channel names to the channel co-ordinates labels in
         % the chanlocs.labels field
-        iChannelSet = eeg_chaninds( CurrentEEG, channelSet );
-    elseif isnumeric( channelSet )
-        iChannelSet = channelSet;
-        channelSet  = { CurrentEEG.chanlocs(iChannelSet).labels };
+        iChannelSet = eeg_chaninds( CurrentEEG, channelsSet );
+    elseif isnumeric( channelsSet )
+        iChannelSet = channelsSet;
+        channelsSet = { CurrentEEG.chanlocs(iChannelSet).labels };
     end
 
     % Loop through: Conditions
-%     parfor c = 1:nConditions
-    for c = 1:nConditions
+    parfor c = 1:nConditions
+%     for c = 1:nConditions
 
         % Current condition event label
         condition     = conditions{c};
+        if ischar( condition )
+            condition = { condition };
+        end
 
         % Parallel broadcast variables
         EEG           = CurrentEEG;             % Struct copied to each parallel worker as pop_loadeset is slower
@@ -541,7 +545,9 @@ for n = 1:nFiles
         skipCount = 0;    % Count of unrealistic trials at the start
 
         % Loop through: Trials
+        fprintf( 'Trial' )
         for trial = 1:nTrials
+            fprintf( [ ' ' num2str( trial ) ] )
 
             % Trial events
             currentTrialEvents  = EEG.epoch(trial).eventtype(:);
@@ -596,10 +602,13 @@ for n = 1:nFiles
                 skipStart = false;
 
                 % Loop through: Channels
+%                 fprintf( '\n' )
                 for ch = 1:nChannels
 
                     % Current channel
-                    channel = channels(ch);
+                    channel     = channels(ch);
+%                     channelName = EEG.chanlocs(channel).labels;
+%                     fprintf( [ channelName ' '  ] )
 
 
                     %% Time-frequency decomposition
@@ -734,10 +743,13 @@ for n = 1:nFiles
 
                         % Store in struct
                         Decomposition.(trialCentre).SpectralPower(trial,ch,:,:)  = powerWindow;
-                        Decomposition.(trialCentre).SpectralPowerUnits           = powerUnits;
-                        Decomposition.(trialCentre).SpectralPowerDimensions      = 'Channels x Frequencies x Times'; % As it will be after averaging
                         Decomposition.(trialCentre).PhaseDirection(trial,ch,:,:) = phaseWindow;
                         Decomposition.(trialCentre).Coefficients(trial,ch,:,:)   = wavesWindow;
+                        Decomposition.(trialCentre).SpectralPowerUnits           = powerUnits;
+                        Decomposition.(trialCentre).SpectralPowerDimensions      = 'Channels x Frequencies x Times'; % As it will be after averaging
+                        Decomposition.(trialCentre).PhaseCoherenceUnits          = 'Phase alignment proportion';
+                        Decomposition.(trialCentre).PhaseCoherenceDimensions     = 'Channels x Frequencies x Times';
+                        Decomposition.(trialCentre).CoefficientsUnits            = 'Complex magnitude';
                         Decomposition.(trialCentre).CoefficientsDimensions       = 'Trials x Channels x Frequencies x Times';
                         Decomposition.(trialCentre).Frequencies                  = frequencies;
                         Decomposition.(trialCentre).FrequenciesUnits             = 'Hz';
@@ -748,7 +760,7 @@ for n = 1:nFiles
                         Decomposition.(trialCentre).BaselinePower(trial,ch,:)    = baseline;
                         Decomposition.(trialCentre).BaselinePowerUnits           = 'Decibel volts^2';
                         Decomposition.(trialCentre).BaselinePowerDimensions      = 'Trials x Channels x Frequencies';
-                        Decomposition.(trialCentre).ChannelNames                 = channelSet;
+                        Decomposition.(trialCentre).ChannelNames                 = channelsSet;
                         Decomposition.(trialCentre).ChannelIndices               = channels;
                         Decomposition.(trialCentre).ChannelCoordinates           = EEG.chanlocs;
                         Decomposition.(trialCentre).BlendTimes(trial,:)          = blenderTime - centreTimes(centre);
@@ -781,6 +793,7 @@ for n = 1:nFiles
             end % if Test initiation time
 
         end % for Trials
+        fprintf( '\n' )
 
         % Set first trials to NaN if they were skipped
         if skipStart

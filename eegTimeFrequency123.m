@@ -511,6 +511,9 @@ for n = 1:nFiles
 
         % Current condition event label
         condition       = conditions{c};
+        if ischar( condition )
+            condition   = { condition };
+        end
 
         % Parallel broadcast variables
         EEG             = CurrentEEG;           % Struct copied to each parallel worker as pop_loadeset is slower
