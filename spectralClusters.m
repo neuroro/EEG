@@ -97,7 +97,7 @@ function Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, downsa
 % Please cite this code if you use it
 %
 % King, R. (2023). spectralClusters [MATLAB code]. GitHub. 
-% https://github.com/neuroro/EEG/spectralClusters.m
+%  https://github.com/neuroro/EEG/spectralClusters.m
 
 
 %% Configuration
