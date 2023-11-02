@@ -1,4 +1,4 @@
-function eegLocalSpectra( channels, imputation )
+function eegLocalSpectra( channels, weighting, imputation )
 %
 % •.° Localised Event-Related Spectra °.•
 % _________________________________________________________________________
@@ -23,7 +23,7 @@ function eegLocalSpectra( channels, imputation )
 % >> eegLocalSpectra( 6 )
 % >> eegLocalSpectra( 'FCz' )
 % >> eegLocalSpectra( [5 6 11 12] )
-% >> eegLocalSpectra( { 'Fz' 'FCz' 'F1' 'F2' }, 10 )
+% >> eegLocalSpectra( { 'Fz' 'FCz' 'F1' 'F2' }, 0, 10 )
 %
 % .. . .  .   .     .        .             .                     .                                  .                                                       .
 %
@@ -34,6 +34,13 @@ function eegLocalSpectra( channels, imputation )
 %                 of channel names or as a vector of channel indices; or
 %                 from all channels as (), '', [], or 0
 %                 (optional input, default all)
+%
+%   weighting:  Weighted or unweighted average of channels
+%                 0, false, or 'unweighted'
+%                 1, true,  or 'weighted'
+%                 the first channel is given full weight, the rest are
+%                 Gaussian-weighted
+%                 (optional input, default unweighted)
 %
 %   imputation: Threshold for imputation as the minimum number of trials
 %                 considered usable, below which imputation will be used
@@ -89,7 +96,11 @@ if ~nargin || ( isscalar( channels ) && ~channels ) || isempty( channels )
     channels = [];
 end
 
-if nargin < 2 || ~isscalar( imputation ) || ~isnumeric( imputation )
+if nargin < 2 || ( isscalar( weighting ) && ~weighting ) || isempty( weighting )
+    weighting = false;
+end
+
+if nargin < 3 || ~isscalar( imputation ) || ~isnumeric( imputation )
     minimumTrialCount = 10;
 else
     minimumTrialCount = imputation;
@@ -222,7 +233,7 @@ while determining
             try
                 LocalSpectra.(eventCentres{w}).TimesUnits        = Decomposition.(eventCentres{w}).TimesUnits;
                 LocalSpectra.(eventCentres{w}).SamplingRate      = Decomposition.(eventCentres{w}).SamplingRate;
-                LocalSpectra.(eventCentres{w}).SamplingRateUnits = Decomposition.(eventCentres{w}).SamplingRateUnits = 'Hz';
+                LocalSpectra.(eventCentres{w}).SamplingRateUnits = Decomposition.(eventCentres{w}).SamplingRateUnits;
             catch
                 LocalSpectra.(eventCentres{w}).TimesUnits        = 'milliseconds';
                 LocalSpectra.(eventCentres{w}).SamplingRate      = [];
@@ -303,7 +314,7 @@ if ~isempty( channels )
             currentChannel  = channels{ch};
             iCurrentChannel = find( strcmp( { ChannelCoordinates(:).labels }, currentChannel ) );
         end
-        iChannels(ch) = find( iChannelSet == iCurrentChannel );                                     %#ok
+        iChannels(ch) = find( iChannelSet == iCurrentChannel, 1 );                                  %#ok
 
     end
 
@@ -332,6 +343,13 @@ channelNames  = { ChannelCoordinates(iChannelSet(iChannels)).labels };
 for w = 1:nCentres
     LocalSpectra.(eventCentres{w}).Channels           = channelNames;
     LocalSpectra.(eventCentres{w}).ChannelCoordinates = ChannelCoordinates;
+end
+
+% Channel weighting
+if weighting
+    weights = electrodeClusterWeights( iChannels );
+else
+    weights = 1;
 end
 
 
@@ -485,8 +503,8 @@ for f = 1:nFiles
         end
         
         % Average across channels
-        spectralPower  = mean( spectralPower,  1, 'omitnan' ); % An entirety of NaNs will still average to NaN
-        phaseCoherence = mean( phaseCoherence, 1, 'omitnan' );
+        spectralPower  = mean( spectralPower  .* weights, 1, 'omitnan' ); % An entirety of NaNs will still average to NaN
+        phaseCoherence = mean( phaseCoherence .* weights, 1, 'omitnan' );
 
         % Clean up
         spectralPower  = squeeze( spectralPower  );
@@ -745,6 +763,52 @@ save( fileName, '-struct', 'LocalSpectra', '-v7.3' )
 
 % Finish time
 codeRunTime( 'Data generation completed at' )
+
+
+% _________________________________________________________________________
+end
+
+
+
+%%
+% •.° Electrode Cluster Weighting °.•
+% _________________________________________________________________________
+function w = electrodeClusterWeights( electrodeCluster )
+%
+% Electrode clusters are defined by standard 10-20 positions with a
+% corresponding electrode given full weight. Adjacent electrodes are
+% weighted in proportion to the ratio of the standard normal Gaussian
+% probability density at 1 + 0.05 per cluster electrode in excess of three,
+% in proportion to the standard normal Gaussian probability density at 0.
+
+
+nElectrodes = length( electrodeCluster );
+
+% Default multipes of the standard deviation (SD)
+if ~exist( 'SD', 'var' ) || nargin < 2
+    SD = 1 + 0.05 * max( 0, nElectrodes - 3 );
+    disp( [ num2str( SD ) ' standard deviations' ] )
+end
+
+% Weighting as a standard Gaussian 
+peakGaussian     = exp( -0^2 / 2 ) / sqrt( 2*pi );
+
+% Primary electrode weighted 1
+w(1)             = 1;
+
+% Adjacent electrodes weighted at 1+ SD in a Gaussian
+oneSDGaussian    = exp( -SD^2 / 2 ) / sqrt( 2*pi );
+oneSDratio       = oneSDGaussian / peakGaussian;
+w(2:nElectrodes) = oneSDratio;
+disp( [ num2str( oneSDratio ) ' adjacent weight' ] )
+
+% Normalise weights
+w = w ./ sum( w ) * nElectrodes;
+
+% Channels in the first dimension of w
+if size( w, 1 ) == 1
+    w = w';
+end
 
 
 % _________________________________________________________________________
