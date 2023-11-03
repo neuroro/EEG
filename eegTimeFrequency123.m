@@ -44,7 +44,7 @@ eegTimeFrequency123( setName, frequencyLimits, frequencyResolution, blending )
 %                         (optional input, default [2 30])
 %
 %   frequencyResolution: Frequencies per octave
-%                         (optional input, default 30)
+%                         (optional input, default 25)
 %
 %   blending:            Blend the edges of variable-length trials
 %                         'sigmoid' taper to 0 dB centred around adjacent 
@@ -274,7 +274,7 @@ end
 
 % Defaut frequencies per octave
 if nargin < 3 || isempty( frequencyResolution ) || ~frequencyResolution
-    frequencyResolution = 30;
+    frequencyResolution = 25;
 end
 
 % Default blending method
