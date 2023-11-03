@@ -22,8 +22,8 @@ function eegLocalSpectra( channels, weighting, imputation )
 % >> eegLocalSpectra
 % >> eegLocalSpectra( 6 )
 % >> eegLocalSpectra( 'FCz' )
-% >> eegLocalSpectra( [5 6 11 12] )
-% >> eegLocalSpectra( { 'Fz' 'FCz' 'F1' 'F2' }, 0, 10 )
+% >> eegLocalSpectra( [11 6 5 12] )
+% >> eegLocalSpectra( { 'Fz' 'FCz' 'FFC1' 'FFC2' }, 0, 10 )E
 %
 % .. . .  .   .     .        .             .                     .                                  .                                                       .
 %
@@ -32,14 +32,18 @@ function eegLocalSpectra( channels, weighting, imputation )
 %   channels:   Extract event-related spectra from a channel name or index;
 %                 from the average of a cluster of channels as a cell array
 %                 of channel names or as a vector of channel indices; or
-%                 from all channels as (), '', [], or 0
+%                 from all channels as 'all', '', [], or 0
 %                 (optional input, default all)
 %
-%   weighting:  Weighted or unweighted average of channels
-%                 0, false, or 'unweighted'
-%                 1, true,  or 'weighted'
-%                 the first channel is given full weight, the rest are
-%                 Gaussian-weighted
+%   weighting:  Weighted or unweighted average of channels as
+%                 'unweighted', false, 0
+%                 'weighted',   true,  1
+%                 Weighted electrode clusters are averaged with the first
+%                 electrode at full-weight and other (adjacent or nearby)
+%                 electrodes weighted in proportion to the ratio of the
+%                 standard normal Gaussian probability density at 1 + 0.05
+%                 per cluster electrode in excess of three to the standard
+%                 normal Gaussian probability density at 0.
 %                 (optional input, default unweighted)
 %
 %   imputation: Threshold for imputation as the minimum number of trials
@@ -293,9 +297,25 @@ end
 % Channels
 % -------------------------------------------------------------------------
 
+% Inputs
+if matches( 'all', channels, 'IgnoreCase', true )
+    channels = [];
+end
+if ischar( weighting ) || isstring( weighting )
+    if matches( 'unweighted', weighting, 'IgnoreCase', true )
+        weighting = false;
+    elseif matches( 'weighted', weighting, 'IgnoreCase', true )
+        weighting = true;
+    end
+end
+
 % Channels in the decomposition
-iChannelSet        = Decomposition.(eventCentres{1}).ChannelIndices;     % Channel indices of the EEG data (and of the channel co-ordinates)
-ChannelCoordinates = Decomposition.(eventCentres{1}).ChannelCoordinates; % Channel co-ordinates
+try
+    iDecompositionChannels = Decomposition.(eventCentres{1}).ChannelIndices;    % Channel indices of the EEG data (and of the channel co-ordinates)
+catch
+    iDecompositionChannels = Decomposition.(eventCentres{1}).Channels;
+end
+ChannelCoordinates = Decomposition.(eventCentres{1}).ChannelCoordinates;        % Channel co-ordinates
 
 % Selected channels from the decomposition
 if ~isempty( channels )
@@ -314,21 +334,24 @@ if ~isempty( channels )
             currentChannel  = channels{ch};
             iCurrentChannel = find( strcmp( { ChannelCoordinates(:).labels }, currentChannel ) );
         end
-        iChannels(ch) = find( iChannelSet == iCurrentChannel, 1 );                                  %#ok
+        if isempty( iCurrentChannel )
+            error( [ 'Channel ' currentChannel ' is not found in the decomposition' ] )
+        end
+        iChannels(ch) = find( iDecompositionChannels == iCurrentChannel, 1 );                                  %#ok
 
     end
 
 % All channels in the decomposition
-elseif isempty( channels ) || length( channels ) == length( iChannelSet )
+elseif isempty( channels ) || length( channels ) == length( iDecompositionChannels )
 
     % Number of channel in the decomposition
-    nChannels = length( iChannelSet );
+    nChannels = length( iDecompositionChannels );
 
     % Indices of the set of channel indices in the decomposition
     iChannels = 1:nChannels;
 
 % Incorrect input
-elseif length( channels ) > length( iChannelSet )
+elseif length( channels ) > length( iDecompositionChannels )
     error( [ 'Error: You selected a greater number of channels than ' ...
              'exist in your time-frequency data files. '              ...
              'Fix: Input all or a sub-set of the channels that are '  ...
@@ -337,7 +360,7 @@ elseif length( channels ) > length( iChannelSet )
 end
 
 % Selected channel names
-channelNames  = { ChannelCoordinates(iChannelSet(iChannels)).labels };
+channelNames  = { ChannelCoordinates(iDecompositionChannels(iChannels)).labels };
 
 % Store channel names and co-ordinates in struct
 for w = 1:nCentres
@@ -346,10 +369,10 @@ for w = 1:nCentres
 end
 
 % Channel weighting
-if weighting
-    weights = electrodeClusterWeights( iChannels );
-else
-    weights = 1;
+if ~weighting
+    weights                 = 1;
+elseif weighting
+    [ weights, oneSDratio ] = electrodeClusterWeights( iChannels );
 end
 
 
@@ -357,10 +380,15 @@ end
 % -------------------------------------------------------------------------
 
 % Files
-disp( 'Extracting localised event-related spectra...' )
+disp( 'Extracting localised event-related spectra' )
 disp( [ 'Windowed relative to ' num2str( nCentres ) ' experimental events' ] )
 disp( [ 'From ' num2str( nFiles ) ' time-frequency decompositions' ] )
-disp( [ 'Representing ' num2str( N ) ' participants and ' num2str( nConditions ) ' conditions' ] )
+if nConditions == 1
+    conditionPlurality = '';
+else
+    conditionPlurality = 's';
+end
+disp( [ 'Representing ' num2str( N ) ' participants and ' num2str( nConditions ) ' condition' conditionPlurality ] )
 
 
 % Channels
@@ -390,8 +418,14 @@ elseif nChannels > 1
     end
 
     % Display channels
-    disp( [ 'Localised to the average of ' displayText ] )
-    disp( channelsText )
+    if ~weighting
+        disp( [ 'Localised to the average of ' displayText ] )
+        disp( channelsText )
+    elseif weighting
+        disp( [ 'Localised to the weighted average of ' displayText ] )
+        disp( channelsText )
+        disp( [ 'With ' channelNames{1} ' full-weight and other electrodes weighted at ' num2str( oneSDratio*100 ) '%' ] )
+    end
 
 end
 
@@ -530,16 +564,30 @@ for w = 1:nCentres
     currentCentre = eventCentres{w};
 
     % Spectral Power
-    LocalSpectra.(currentCentre).GrandAverage.SpectralPower  ...
+    LocalSpectra.(currentCentre).GrandAverage.SpectralPower                 ...
          = mean( LocalSpectra.(currentCentre).SpectralPower,  1, 'omitnan' );
-    LocalSpectra.(currentCentre).GrandAverage.SpectralPowerUnits       = spectralPowerUnits;
-    LocalSpectra.(currentCentre).GrandAverage.SpectralPowerDimensions  = 'Conditions x Frequencies x Times';
+    LocalSpectra.(currentCentre).GrandAverage.SpectralPowerUnits            ...
+         = spectralPowerUnits;
+    if nConditions == 1
+        LocalSpectra.(currentCentre).GrandAverage.SpectralPowerDimensions   ...
+         = 'Frequencies x Times';
+    elseif nConditions > 1
+        LocalSpectra.(currentCentre).GrandAverage.SpectralPowerDimensions   ...
+         = 'Conditions x Frequencies x Times';
+    end
 
     % Phase Coherence
-    LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence ...
+    LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence                ...
          = mean( LocalSpectra.(currentCentre).PhaseCoherence, 1, 'omitnan' );
-    LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceUnits      = phaseCoherenceUnits;
-    LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceDimensions = 'Conditions x Frequencies x Times';
+    LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceUnits           ...
+         = phaseCoherenceUnits;
+    if nConditions == 1
+        LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceDimensions  ...
+         = 'Frequencies x Times';
+    elseif nConditions > 1
+        LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceDimensions  ...
+         = 'Conditions x Frequencies x Times';
+    end
 
     % Clean up
     LocalSpectra.(currentCentre).GrandAverage.SpectralPower  ...
@@ -641,8 +689,74 @@ if impute
 end % Imputation
 
 
-%% Location naming
+%% Save
 % -------------------------------------------------------------------------
+
+% Location naming
+locationName = locationNaming( iChannels,              ...
+                               channelNames,           ...
+                               iDecompositionChannels, ...
+                               ChannelCoordinates      );
+
+% File name
+fileName = [ 'TimeFrequency' locationName ];
+
+% Save TimeFrequency<Location>.mat 
+save( fileName, '-struct', 'LocalSpectra', '-v7.3' )
+
+% Finish time
+codeRunTime( 'Data generation completed at' )
+
+
+% _________________________________________________________________________
+end
+
+
+
+%%
+% •.° Electrode Cluster Weighting °.•
+% _________________________________________________________________________
+function [ w, oneSDratio ]  = electrodeClusterWeights( electrodeCluster )
+
+% Number of selected electrodes
+nElectrodes = length( electrodeCluster );
+
+% Default multipes of the standard deviation (SD)
+if ~exist( 'SD', 'var' ) || nargin < 2
+    SD = 1 + 0.05 * max( 0, nElectrodes - 3 );
+end
+
+% Weighting as a standard Gaussian 
+peakGaussian     = exp( -0^2 / 2 ) / sqrt( 2*pi );
+
+% Primary electrode weighted 1
+w(1)             = 1;
+
+% Adjacent electrodes weighted at 1+ SD in a Gaussian
+oneSDGaussian    = exp( -SD^2 / 2 ) / sqrt( 2*pi );
+oneSDratio       = oneSDGaussian / peakGaussian;
+w(2:nElectrodes) = oneSDratio;
+
+% Normalise weights
+w = w ./ sum( w ) * nElectrodes;
+
+% Channels in the first dimension of w
+if size( w, 1 ) == 1
+    w = w';
+end
+
+
+% _________________________________________________________________________
+end
+
+
+
+%%
+% •.° Location Naming °.•
+% _________________________________________________________________________
+function ...
+locationName = locationNaming( iChannels, channelNames, ...
+                               iDecompositionChannels, ChannelCoordinates )
 
 % Important channel names
 Fz  = 'Fz';
@@ -683,9 +797,9 @@ iPO7 = find( strcmp( { ChannelCoordinates(:).labels }, PO7 ) );
 iPO8 = find( strcmp( { ChannelCoordinates(:).labels }, PO8 ) );
 
 % Cluster of electrodes name
-if length( channels ) > 1 || ( isempty( channels ) && length( iChannelSet ) <= 7 )
+if length( iChannels ) > 1 || ( isempty( iChannels ) && length( iDecompositionChannels ) <= 7 )
 
-    iSelectedChannels = iChannelSet(iChannels);
+    iSelectedChannels = iDecompositionChannels(iChannels);
 
     % Frontal midline cluster including FCz & Fz
     if any( iSelectedChannels == iFCz ) && any( iSelectedChannels == iFz )
@@ -738,77 +852,18 @@ if length( channels ) > 1 || ( isempty( channels ) && length( iChannelSet ) <= 7
     end
 
 % Single electrode name
-elseif length( channels ) == 1
+elseif length( iChannels ) == 1
     locationName = channelNames{1};
 
 % All channels
 else
-    if length( iChannelSet ) <= 10
+    if length( iDecompositionChannels ) <= 10
         locationName = 'Cluster';
     else
         locationName = 'Average';
     end
 
 end % if Number of selected electrodes
-
-
-%% Save
-% -------------------------------------------------------------------------
-
-% File name
-fileName = [ 'TimeFrequency' locationName ];
-
-% Save TimeFrequency<Location>.mat 
-save( fileName, '-struct', 'LocalSpectra', '-v7.3' )
-
-% Finish time
-codeRunTime( 'Data generation completed at' )
-
-
-% _________________________________________________________________________
-end
-
-
-
-%%
-% •.° Electrode Cluster Weighting °.•
-% _________________________________________________________________________
-function w = electrodeClusterWeights( electrodeCluster )
-%
-% Electrode clusters are defined by standard 10-20 positions with a
-% corresponding electrode given full weight. Adjacent electrodes are
-% weighted in proportion to the ratio of the standard normal Gaussian
-% probability density at 1 + 0.05 per cluster electrode in excess of three,
-% in proportion to the standard normal Gaussian probability density at 0.
-
-
-nElectrodes = length( electrodeCluster );
-
-% Default multipes of the standard deviation (SD)
-if ~exist( 'SD', 'var' ) || nargin < 2
-    SD = 1 + 0.05 * max( 0, nElectrodes - 3 );
-    disp( [ num2str( SD ) ' standard deviations' ] )
-end
-
-% Weighting as a standard Gaussian 
-peakGaussian     = exp( -0^2 / 2 ) / sqrt( 2*pi );
-
-% Primary electrode weighted 1
-w(1)             = 1;
-
-% Adjacent electrodes weighted at 1+ SD in a Gaussian
-oneSDGaussian    = exp( -SD^2 / 2 ) / sqrt( 2*pi );
-oneSDratio       = oneSDGaussian / peakGaussian;
-w(2:nElectrodes) = oneSDratio;
-disp( [ num2str( oneSDratio ) ' adjacent weight' ] )
-
-% Normalise weights
-w = w ./ sum( w ) * nElectrodes;
-
-% Channels in the first dimension of w
-if size( w, 1 ) == 1
-    w = w';
-end
 
 
 % _________________________________________________________________________
