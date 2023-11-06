@@ -23,7 +23,7 @@ function eegLocalSpectra( channels, weighting, imputation )
 % >> eegLocalSpectra( 6 )
 % >> eegLocalSpectra( 'FCz' )
 % >> eegLocalSpectra( [11 6 5 12] )
-% >> eegLocalSpectra( { 'Fz' 'FCz' 'FFC1' 'FFC2' }, 0, 10 )E
+% >> eegLocalSpectra( { 'Fz' 'FCz' 'FFC1' 'FFC2' }, 0, 10 )
 %
 % .. . .  .   .     .        .             .                     .                                  .                                                       .
 %
@@ -200,6 +200,8 @@ nConditions = length( conditions );
 % -------------------------------------------------------------------------
 
 % Determine parameters from the first file with complete data
+disp( 'Determining parameters from the first file with complete data' )
+disp( ' ' )
 determining = true;
 d           = 1;
 while determining
@@ -311,17 +313,21 @@ end
 
 % Channels in the decomposition
 try
-    iDecompositionChannels = Decomposition.(eventCentres{1}).ChannelIndices;    % Channel indices of the EEG data (and of the channel co-ordinates)
+    iDecompositionChannels = Decomposition.(eventCentres{1}).ChannelIndices;        % Channel indices of the EEG data (and of the channel co-ordinates)
 catch
     iDecompositionChannels = Decomposition.(eventCentres{1}).Channels;
 end
-ChannelCoordinates = Decomposition.(eventCentres{1}).ChannelCoordinates;        % Channel co-ordinates
+ChannelCoordinates         = Decomposition.(eventCentres{1}).ChannelCoordinates;    % Channel co-ordinates
+decompositionChannelNames  = { ChannelCoordinates(:).labels };
 
 % Selected channels from the decomposition
 if ~isempty( channels )
 
     % Number of selected channels
     nChannels = length( channels );
+
+    % Pre-allocate
+    iChannels = zeros( 1, nChannels );
 
     % Loop through: Channels to extract
     for ch = 1:nChannels
@@ -332,13 +338,18 @@ if ~isempty( channels )
             iCurrentChannel = channels(ch);
         elseif iscell( channels )
             currentChannel  = channels{ch};
-            iCurrentChannel = find( strcmp( { ChannelCoordinates(:).labels }, currentChannel ) );
+            iCurrentChannel = strcmp( decompositionChannelNames, currentChannel );
+            iCurrentChannel = find( iCurrentChannel );
         end
         if isempty( iCurrentChannel )
+            error( [ 'Channel ' currentChannel ' is not found in the channel co-ordinates' ] )
+        end
+        iChannel      = iDecompositionChannels == iCurrentChannel;
+        iChannel      = find( iChannel, 1 );
+        if isempty( iChannel )
             error( [ 'Channel ' currentChannel ' is not found in the decomposition' ] )
         end
-        iChannels(ch) = find( iDecompositionChannels == iCurrentChannel, 1 );                                  %#ok
-
+        iChannels(ch) = iChannel;
     end
 
 % All channels in the decomposition
@@ -360,7 +371,8 @@ elseif length( channels ) > length( iDecompositionChannels )
 end
 
 % Selected channel names
-channelNames  = { ChannelCoordinates(iDecompositionChannels(iChannels)).labels };
+channelNames = decompositionChannelNames(iDecompositionChannels(iChannels));
+% channelNames = { ChannelCoordinates(iDecompositionChannels(iChannels)).labels };
 
 % Store channel names and co-ordinates in struct
 for w = 1:nCentres
@@ -373,6 +385,10 @@ if ~weighting
     weights                 = 1;
 elseif weighting
     [ weights, oneSDratio ] = electrodeClusterWeights( iChannels );
+    LocalSpectra.(eventCentres{w}).Weighting.CentralChannel       = channelNames{1};
+    LocalSpectra.(eventCentres{w}).Weighting.CentralChannelWeight = 1;
+    LocalSpectra.(eventCentres{w}).Weighting.NearbyChannels       = channelNames(2:end);
+    LocalSpectra.(eventCentres{w}).Weighting.NearbyChannelsWeight = oneSDratio;
 end
 
 
@@ -453,12 +469,14 @@ for w = 1:nCentres
 end
 
 % Loop through: Files per participant per condition
+fprintf( 'File' )
 for f = 1:nFiles
 
     % File
     currentFile        = fileList{f};
     currentFolder      = folderList{f};
     currentFilePath    = fullfile( currentFolder, currentFile );
+    fprintf( [ ' ' num2str( f ) ] )
 
     % Participant
     currentParticipant = participantList{f};                               % Giving e.g. '15'
@@ -553,6 +571,7 @@ for f = 1:nFiles
     end % for Window centres
 
 end % for Files
+fprintf( '\n\n' )
 
 
 %% Grand average spectra per condition (initial Grand Average if imputing)
@@ -698,8 +717,15 @@ locationName = locationNaming( iChannels,              ...
                                iDecompositionChannels, ...
                                ChannelCoordinates      );
 
+% Weighting
+if weighting
+    weightingName = [ channelNames{1} 'Weighted' ];
+else
+    weightingName = '';
+end
+
 % File name
-fileName = [ 'TimeFrequency' locationName ];
+fileName = [ 'TimeFrequency' locationName weightingName ];
 
 % Save TimeFrequency<Location>.mat 
 save( fileName, '-struct', 'LocalSpectra', '-v7.3' )
@@ -760,6 +786,8 @@ locationName = locationNaming( iChannels, channelNames, ...
 
 % Important channel names
 Fz  = 'Fz';
+F3  = 'F3';
+F4  = 'F4';
 FCz = 'FCz';
 CPz = 'CPz';
 Pz  = 'Pz';
@@ -773,6 +801,8 @@ PO8 = 'PO8';
 % EGI channels
 if any( contains( { ChannelCoordinates(:).labels }, 'E' ) )
     Fz  = 'E11';
+    F3  = 'E24';
+    F4  = 'E124';
     FCz = 'E6';
     CPz = 'E55';
     Pz  = 'E62';
@@ -786,6 +816,8 @@ end
 
 % Important channel indices
 iFz  = find( strcmp( { ChannelCoordinates(:).labels }, Fz  ) );
+iF3  = find( strcmp( { ChannelCoordinates(:).labels }, F3  ) );
+iF4  = find( strcmp( { ChannelCoordinates(:).labels }, F4  ) );
 iFCz = find( strcmp( { ChannelCoordinates(:).labels }, FCz ) );
 iCPz = find( strcmp( { ChannelCoordinates(:).labels }, CPz ) );
 iPz  = find( strcmp( { ChannelCoordinates(:).labels }, Pz  ) );
@@ -812,6 +844,10 @@ if length( iChannels ) > 1 || ( isempty( iChannels ) && length( iDecompositionCh
     % Frontal midline cluster including Fz
     elseif any( iSelectedChannels == iFz ) && ~any( iSelectedChannels == iFCz )
         locationName = 'FzCluster';
+
+    % Frontal bilateral cluster including F3 & F4
+    elseif any( iSelectedChannels == iF3 ) && any( iSelectedChannels == iF4 ) && ~any( iSelectedChannels == iFz )
+        locationName = 'FBiCluster';
 
     % Parietal midline cluster including Pz & CPz
     elseif any( iSelectedChannels == iPz ) && ~any( iSelectedChannels == iCPz )
