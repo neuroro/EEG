@@ -107,22 +107,23 @@ disp( 'save a .mat file for each participant x condition in the original folder'
 disp( ' ' )
 
 
-%% Configuration
-% -------------------------------------------------------------------------
+%% • CONFIGURATION •
+% _________________________________________________________________________
+%
+# % CONFIGURE THESE PARAMETERS FOR YOUR STUDY AND DELETE THE #'s
+
 
 % Participant code prefix of the participant number in the file name
 % For example 'P' 'S' 'Participant' 'sub-'
-participantCode = 'P';
+participantCode = 'P'; #
 
 % Standard recognition task familiarity recode prefix
 % participantCode = 'Familiarity';
 
-% !!! INPUT YOUR PARTICPANT CODE PREFIX !!!
-
 
 % Event-related windows in order
-EventRelatedWindows.Window1 = 'Stimulus';
-EventRelatedWindows.Window2 = 'Response';
+EventRelatedWindows.Window1 = 'Stimulus'; #
+EventRelatedWindows.Window2 = 'Response'; #
 
 
 % Stimulus event labels for each condition
@@ -131,7 +132,7 @@ EventRelatedWindows.Window2 = 'Response';
 % condition that are extracted separately and a response-decision event
 
 % Generic task
-ConditionEvents.Task        = { 'Stimulus' };
+ConditionEvents.Task        = { 'Stimulus' }; #
 
 % Sternberg memory task probes
 ConditionEvents.Probes      = { 'STI5' 'STI7' 'STI9' };
@@ -144,11 +145,11 @@ ConditionEvents.Recognition = { 'Familiar' 'Recognised' 'Misidentified'     ...
 % Altruism reward task
 ConditionEvents.Altruism    = { 'AccH' 'AccM' 'AccL' 'ShaH' 'ShaM' 'ShaL' };
 
-% !!! INPUT YOUR CONDITIONS !!!
-% conditions                  = ConditionEvents.Task;
+% Select task conditions
+conditions                  = ConditionEvents.Task; #
 conditions                  = ConditionEvents.Probes;
-% conditions                  = ConditionEvents.Recognition;
-% conditions                  = ConditionEvents.Altruism;
+conditions                  = ConditionEvents.Recognition;
+conditions                  = ConditionEvents.Altruism;
 
 
 % Resonse event labels
@@ -158,7 +159,7 @@ conditions                  = ConditionEvents.Probes;
 % not extracted separately
 
 % Generic task
-ResponseEvents.Task        = { 'Response' };
+ResponseEvents.Task        = { 'Response' }; #
 
 % Sternberg memory task responses
 ResponseEvents.Probes      = { 'CIL5' 'CIL7' 'CIL9' 'COL5' 'COL7' 'COL9' ...
@@ -170,31 +171,29 @@ ResponseEvents.Recognition = { 'S  4' 'S  8' };
 % Altruism reward task
 ResponseEvents.Altruism    = { 'Resp' };
 
-% !!! INPUT YOUR RESPONSE TYPES !!!
-% responses                  = ResponseEvents.Task;
+% Select task response types
+responses                  = ResponseEvents.Task; #
 responses                  = ResponseEvents.Probes;
-% responses                  = ResponseEvents.Recognition;
-% responses                  = ResponseEvents.Altruism;
+responses                  = ResponseEvents.Recognition;
+responses                  = ResponseEvents.Altruism;
 
 
 % Time parameters
 % -------------------------------------------------------------------------
 
-% !!! INPUT YOUR TIMES !!!
-
 % Sampling rate
-samplingRate     = 1000;
+samplingRate     = 1000; #
 
 % Trial limits
-baselineLimits   = [ -500 0    ];   % Relative to stimulus time
-stimulusLimits   = [ -200 1000 ];   % Relative to stimulus time
-responseLimits   = [ -600 500  ];   % Relative to response time
+baselineLimits   = [ -500 0    ]; #  % Relative to stimulus time
+stimulusLimits   = [ -200 1000 ]; #  % Relative to stimulus time
+responseLimits   = [ -600 500  ]; #  % Relative to response time
 
 % Maximum response time for a trial to be valid
-maxResponseTime  = 1500;
+maxResponseTime  = 1500; #
 
 % Minimum reaction time for a trial to be valid
-minReactionTime  = 75;
+minReactionTime  = 75; #
 
 % Blending parameters
 blendingDuration = 80;              % Sigmoid blend time points around adjacent event (in ms)
@@ -212,21 +211,21 @@ nTrialsMinimum   = 10;              % Time points with fewer trials than this nu
 % -------------------------------------------------------------------------
 % For example '10-10' '10-20' 'Indices' 'Brain Products' 'Biosemi' 'EGI'
 
-capSystem = 'EGI'; % 'International';
+capSystem = 'International'; #
 
 
 % Channels of interest
 % -------------------------------------------------------------------------
 
 % International 10-10 system
-ChannelSets.Frontal1010      = { 'Fz'  'F3'  'F4' };
-ChannelSets.Parietal1010     = { 'PO7' 'PO8' 'P7' 'P8' };
-ChannelSets.Occipital1010    = {};
-ChannelSets.Temporal1010     = {};
+ChannelSets.Frontal1010      = { 'Fz'  'F3'  'F4' }; #
+ChannelSets.Parietal1010     = { 'PO7' 'PO8' 'P7' 'P8' }; #
+ChannelSets.Occipital1010    = {}; #
+ChannelSets.Temporal1010     = {}; #
 
 % EGI system
-ChannelSets.FrontalEGI       = { 'E11'  'E19' 'E4'  'E24' 'E124' , 'E16'  'E18' 'E10'  'E23' 'E3' , 'E12' 'E5' , 'E6'  'E13' 'E112' };  % { 'E11' 'E24' 'E124' };
-ChannelSets.ParietalEGI      = {}; % { 'E62'  'E61' 'E78'  'E60' 'E85'  'E52' 'E92' , 'E65' 'E90'  'E59' 'E91'  'E58' 'E96' };                % { 'E65' 'E90' 'E58' 'E96' };
+ChannelSets.FrontalEGI       = { 'E11' 'E24' 'E124' };
+ChannelSets.ParietalEGI      = { 'E65' 'E90' 'E58' 'E96' };
 ChannelSets.OccipitalEGI     = {};
 ChannelSets.TemporalEGI      = {};
 
@@ -237,7 +236,8 @@ ChannelSets.OccipitalIndices = [];
 ChannelSets.TemporalIndices  = [];
 
 
-% !!! INPUT YOUR CAP SYSTEM AND CHANNELS !!!
+% -------------------------------------------------------------------------
+% • END OF CONFIGURATION •
 
 
 %% Default inputs
