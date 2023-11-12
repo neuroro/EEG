@@ -94,6 +94,12 @@ eegTimeFrequency( setName, frequencyLimits, frequencyResolution, blending )
 %  https://github.com/neuroro/EEG/eegTimeFrequency.m
 
 
+%% Startup
+% -------------------------------------------------------------------------
+
+% Initialise EEGLAB
+eegStartup
+
 % Introduction
 disp( ' ' )
 disp( '•.° EEG Time-Frequency Decomposition °.•' )
@@ -187,7 +193,7 @@ samplingRate     = 1000; #
 % Trial limits
 baselineLimits   = [ -500 0    ]; #  % Relative to stimulus time
 stimulusLimits   = [ -200 1000 ]; #  % Relative to stimulus time
-responseLimits   = [ -600 500  ]; #  % Relative to response time
+responseLimits   = [ -500 700  ]; #  % Relative to response time
 
 % Maximum response time for a trial to be valid
 maxResponseTime  = 1500; #
@@ -926,6 +932,7 @@ end
 %%
 % •.° Baseline Correction °.•
 % _________________________________________________________________________
+%
 function ...
 [ spectralPower, baseline ] = baselineCorrection( spectralPower, timePoints, baselineLimit )
 
@@ -969,8 +976,9 @@ end
 
 
 %%
-% •.° Median, Savitsky-Golay, and Gaussian filter blending °.•
+% •.° Median, Savitsky-Golay, and Gaussian Filter Blending °.•
 % _________________________________________________________________________
+%
 function ...
 Decomposition = filterBlend( Decomposition, centre, trialCentre, blending, ...
                              neighbourhood, order, frames, sigmaGauss )
@@ -1101,8 +1109,39 @@ end
 
 
 %%
+% •.° EEGLAB Initialisation
+% _________________________________________________________________________
+%
+function eegStartup
+
+% Check if EEGLAB is being used in the Base Workspace
+existenceCommand      = "exist( 'globalvars', 'var' ) || exist( 'tmpEEG', 'var' )";
+baseVariableExistence = evalin( "base", existenceCommand );
+
+% Initialise EEGLAB
+eeglab nogui
+
+% Clear global variables
+clearvars -global ALLCOM ALLEEG CURRENTSET CURRENTSTUDY EEG LASTCOM PLUGINLIST STUDY
+
+% Clear variables set in the Base Workspace unless they are being used
+if ~baseVariableExistence
+    evalin( "base", "clearvars globalvars tmpEEG" )
+end
+
+% Reset the Command Window without clearing
+home
+
+
+% _________________________________________________________________________
+end
+
+
+
+%%
 % •.° Decomposition Run Time °.•
 % _________________________________________________________________________
+%
 function timeFrequencyRunTime( message )
 
 % Time
@@ -1115,6 +1154,7 @@ if exist( 'message', 'var' )
 else
     disp( theTimeIs )
 end
+disp( ' ' )
 
 
 % _________________________________________________________________________
@@ -1125,6 +1165,7 @@ end
 %%
 % •.° Parallel Save °.•
 % _________________________________________________________________________
+%
 function timeFrequencyParallelSave( fileName, structOfVariablesToSave )
 
 save( fileName, '-struct', 'structOfVariablesToSave', '-v7.3' )
