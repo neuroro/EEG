@@ -76,6 +76,28 @@ function Ct = globalFieldPowerComponents( setName, smoothing )
 % Please cite this code if you use it
 
 
+%% Startup
+% -------------------------------------------------------------------------
+
+% Initialise EEGLAB
+eegStartup
+
+% Introduction
+disp( ' ' )
+disp( '•.° ERP Component Times In Global Field Power °.•' )
+disp( '_________________________________________________________________________' )
+disp( ' ' )
+disp( 'Calculate global field power (GFP), the spatial standard deviation, of'  )
+disp( 'event-related EEG data, with and without smoothing using Savitsky-Golay' )
+disp( 'filtering, and find local maxima and minima in GFP and smoothed GFP, to' )
+disp( 'obtain candidate peak latencies for components of the event-related'     )
+disp( 'potential (ERP)'                                                         )
+disp( ' ' )
+disp( 'Savitsky-Golay filtering may help resolve candidate ERP components in'   )
+disp( 'data with a lower signal-to-noise ratio'                                 )
+disp( ' ' )
+
+
 %% Default inputs
 % -------------------------------------------------------------------------
 
@@ -91,6 +113,14 @@ end
 if ~exist( 'smoothing', 'var' )
     smoothing = [5 85];
 end
+
+% • Reference •
+% -------------------------------------------------------------------------
+% Sadaghiani, S. (2023, July 24). Timescale-overarching principles shape
+%   brain state dynamics along multiple concurrent infraslow-to-fast
+%   trajectories. In Temporal Organizing Principles of the Connectome
+%   [Symposium]. Organization for Human Brain Mapping 2023 Annual Meeting,
+%   Montréal, Quebec, Canada. https://www.humanbrainmapping.org
 
 
 %% EEGLAB dataset files
@@ -264,14 +294,36 @@ end % for Dataset files
 save GlobalFieldPowerComponents Ct
 
 
+% _________________________________________________________________________
+end
+
+
+
+%%
+% •.° EEGLAB Initialisation
+% _________________________________________________________________________
+function eegStartup
+
+% Check if EEGLAB is being used in the Base Workspace
+existenceCommand      = "exist( 'globalvars', 'var' ) || exist( 'tmpEEG', 'var' )";
+baseVariableExistence = evalin( "base", existenceCommand );
+
+% Initialise EEGLAB
+eeglab nogui
+
+% Clear global variables
+clearvars -global ALLCOM ALLEEG CURRENTSET CURRENTSTUDY EEG LASTCOM PLUGINLIST STUDY
+
+% Clear variables set in the Base Workspace unless they are being used
+if ~baseVariableExistence
+    evalin( "base", "clearvars globalvars tmpEEG" )
+end
+
+% Reset the Command Window without clearing
+home
+
 
 % _________________________________________________________________________
 end
 
-% • Reference •
-% -------------------------------------------------------------------------
-% Sadaghiani, S. (2023, July 24). Timescale-overarching principles shape
-%   brain state dynamics along multiple concurrent infraslow-to-fast
-%   trajectories. In Temporal Organizing Principles of the Connectome
-%   [Symposium]. Organization for Human Brain Mapping 2023 Annual Meeting,
-%   Montréal, Quebec, Canada. https://www.humanbrainmapping.org
+
