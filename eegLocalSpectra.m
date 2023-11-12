@@ -23,7 +23,7 @@ function eegLocalSpectra( channels, weighting, imputation )
 % >> eegLocalSpectra( 6 )
 % >> eegLocalSpectra( 'FCz' )
 % >> eegLocalSpectra( [11 6 5 12] )
-% >> eegLocalSpectra( { 'Fz' 'FCz' 'FFC1' 'FFC2' }, 0, 10 )
+% >> eegLocalSpectra( { 'Fz' 'FCz' 'FFC1' 'FFC2' }, 'unweighted', 10 )
 %
 % .. . .  .   .     .        .             .                     .                                  .                                                       .
 %
@@ -453,19 +453,44 @@ clear Decomposition
 %% Construct time-frequency arrays
 % -------------------------------------------------------------------------
 
-% Pre-allocate
+% Pre-allocate Imputations struct
 impute = false;
 Imputations(nFiles).File                 = [];
 Imputations(nFiles).AffectedEventWindows = [];
 Imputations(nFiles).ParticipantIndex     = [];
 Imputations(nFiles).ConditionIndex       = [];
+
+% Pre-allocate LocalSpectra struct
 for w = 1:nCentres
-    LocalSpectra.(eventCentres{w}).SpectralPower            = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
-    LocalSpectra.(eventCentres{w}).SpectralPowerUnits       = spectralPowerUnits;
-    LocalSpectra.(eventCentres{w}).SpectralPowerDimensions  = 'Participants x Conditions x Frequencies x Times';
-    LocalSpectra.(eventCentres{w}).PhaseCoherence           = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
-    LocalSpectra.(eventCentres{w}).PhaseCoherenceUnits      = phaseCoherenceUnits;
-    LocalSpectra.(eventCentres{w}).PhaseCoherenceDimensions = 'Participants x Conditions x Frequencies x Times';
+
+    % Average spectra
+    LocalSpectra.(eventCentres{w}).SpectralPower                            ...
+                                 = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
+    LocalSpectra.(eventCentres{w}).SpectralPowerUnits                       ...
+                                 = spectralPowerUnits;
+    LocalSpectra.(eventCentres{w}).SpectralPowerDimensions                  ...
+                                 = 'Participants x Conditions x Frequencies x Times';
+    LocalSpectra.(eventCentres{w}).PhaseCoherence                           ...
+                                 = NaN( N, nConditions, nFrequencies, nTimes.(eventCentres{w}) );
+    LocalSpectra.(eventCentres{w}).PhaseCoherenceUnits                      ...
+                                 = phaseCoherenceUnits;
+    LocalSpectra.(eventCentres{w}).PhaseCoherenceDimensions                 ...
+                                 = 'Participants x Conditions x Frequencies x Times';
+
+    % Channel spectra
+    LocalSpectra.(eventCentres{w}).ChannelSpectra.SpectralPower             ...
+                                                = NaN( N, nConditions, nChannels, nFrequencies, nTimes.(eventCentres{w}) );
+    LocalSpectra.(eventCentres{w}).ChannelSpectra.SpectralPowerUnits        ...
+                                                = spectralPowerUnits;
+    LocalSpectra.(eventCentres{w}).ChannelSpectra.SpectralPowerDimensions   ...
+                                                = 'Participants x Conditions x Channels x Frequencies x Times';
+    LocalSpectra.(eventCentres{w}).ChannelSpectra.PhaseCoherence            ...
+                                                = NaN( N, nConditions, nChannels, nFrequencies, nTimes.(eventCentres{w}) );
+    LocalSpectra.(eventCentres{w}).ChannelSpectra.PhaseCoherenceUnits       ...
+                                                = phaseCoherenceUnits;
+    LocalSpectra.(eventCentres{w}).ChannelSpectra.PhaseCoherenceDimensions  ...
+                                                = 'Participants x Conditions x Channels x Frequencies x Times';
+
 end
 
 % Loop through: Files per participant per condition
@@ -553,7 +578,21 @@ for f = 1:nFiles
             Imputations(f).ConditionIndex          = iCondition;
         
         end
-        
+
+        % Store in struct
+        LocalSpectra.(currentCentre).ChannelSpectra ...
+            .SpectralPower(iParticipant,iCondition,:,:,:)  = spectralPower;
+        LocalSpectra.(currentCentre).ChannelSpectra ...
+            .SpectralPowerUnits                            = spectralPowerUnits;
+        LocalSpectra.(currentCentre).ChannelSpectra ...
+            .SpectralPowerDimensions                       = 'Participants x Conditions x Channels x Frequencies x Times';
+        LocalSpectra.(currentCentre).ChannelSpectra ...
+            .PhaseCoherence(iParticipant,iCondition,:,:,:) = phaseCoherence;
+        LocalSpectra.(currentCentre).ChannelSpectra ...
+            .PhaseCoherenceUnits                           = phaseCoherenceUnits;
+        LocalSpectra.(currentCentre).ChannelSpectra ...
+            .PhaseCoherenceDimensions                      = 'Participants x Conditions x Channels x Frequencies x Times';
+
         % Average across channels
         spectralPower  = mean( spectralPower  .* weights, 1, 'omitnan' ); % An entirety of NaNs will still average to NaN
         phaseCoherence = mean( phaseCoherence .* weights, 1, 'omitnan' );
@@ -562,7 +601,7 @@ for f = 1:nFiles
         spectralPower  = squeeze( spectralPower  );
         phaseCoherence = squeeze( phaseCoherence );
 
-        % Store in arrays
+        % Store in struct
         LocalSpectra.(currentCentre).SpectralPower(iParticipant,iCondition,:,:)  = spectralPower;
         LocalSpectra.(currentCentre).PhaseCoherence(iParticipant,iCondition,:,:) = phaseCoherence;
 
@@ -584,7 +623,7 @@ for w = 1:nCentres
 
     % Spectral Power
     LocalSpectra.(currentCentre).GrandAverage.SpectralPower                 ...
-         = mean( LocalSpectra.(currentCentre).SpectralPower,  1, 'omitnan' );
+         = mean( LocalSpectra.(currentCentre).SpectralPower, 1, 'omitnan' );
     LocalSpectra.(currentCentre).GrandAverage.SpectralPowerUnits            ...
          = spectralPowerUnits;
     if nConditions == 1
@@ -592,6 +631,17 @@ for w = 1:nCentres
          = 'Frequencies x Times';
     elseif nConditions > 1
         LocalSpectra.(currentCentre).GrandAverage.SpectralPowerDimensions   ...
+         = 'Conditions x Frequencies x Times';
+    end
+    LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.SpectralPower  ...
+         = mean( LocalSpectra.(currentCentre).ChannelSpectra.SpectralPower, 1, 'omitnan' );
+    LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.SpectralPowerUnits            ...
+         = spectralPowerUnits;
+    if nConditions == 1
+        LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.SpectralPowerDimensions   ...
+         = 'Frequencies x Times';
+    elseif nConditions > 1
+        LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.SpectralPowerDimensions   ...
          = 'Conditions x Frequencies x Times';
     end
 
@@ -607,12 +657,27 @@ for w = 1:nCentres
         LocalSpectra.(currentCentre).GrandAverage.PhaseCoherenceDimensions  ...
          = 'Conditions x Frequencies x Times';
     end
+    LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.PhaseCoherence  ...
+         = mean( LocalSpectra.(currentCentre).ChannelSpectra.PhaseCoherence, 1, 'omitnan' );
+    LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.PhaseCoherenceUnits            ...
+         = phaseCoherenceUnits;
+    if nConditions == 1
+        LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.PhaseCoherenceDimensions    ...
+         = 'Frequencies x Times';
+    elseif nConditions > 1
+        LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.PhaseCoherenceDimensions    ...
+         = 'Conditions x Frequencies x Times';
+    end
 
     % Clean up
-    LocalSpectra.(currentCentre).GrandAverage.SpectralPower  ...
+    LocalSpectra.(currentCentre).GrandAverage.SpectralPower                 ...
          = squeeze( LocalSpectra.(currentCentre).GrandAverage.SpectralPower  );
-    LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence ...
+    LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence                ...
          = squeeze( LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence );
+    LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.SpectralPower  ...
+         = squeeze( LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.SpectralPower  );
+    LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.PhaseCoherence ...
+         = squeeze( LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.PhaseCoherence );
 
 end % for Window centres
 
@@ -662,6 +727,12 @@ if impute
                         LocalSpectra.(affectedCentre).PhaseCoherence(iParticipant,iCondition,:,:) ...
              = squeeze( LocalSpectra.(affectedCentre).GrandAverage.PhaseCoherence(iCondition,:,:) );
 
+                        LocalSpectra.(affectedCentre).ChannelSpectra.SpectralPower(iParticipant,iCondition,:,:,:)  ...
+             = squeeze( LocalSpectra.(affectedCentre).ChannelSpectra.GrandAverage.SpectralPower(iCondition,:,:,:)  );
+
+                        LocalSpectra.(affectedCentre).ChannelSpectra.PhaseCoherence(iParticipant,iCondition,:,:,:) ...
+             = squeeze( LocalSpectra.(affectedCentre).ChannelSpectra.GrandAverage.PhaseCoherence(iCondition,:,:,:) );
+
                     else
 
                         LocalSpectra.(affectedCentre).SpectralPower(iParticipant,iCondition,:,:)  ...
@@ -669,6 +740,12 @@ if impute
 
                         LocalSpectra.(affectedCentre).PhaseCoherence(iParticipant,iCondition,:,:) ...
                       = LocalSpectra.(affectedCentre).GrandAverage.PhaseCoherence;
+
+                        LocalSpectra.(affectedCentre).ChannelSpectra.SpectralPower(iParticipant,iCondition,:,:)  ...
+                      = LocalSpectra.(affectedCentre).ChannelSpectra.GrandAverage.SpectralPower;
+
+                        LocalSpectra.(affectedCentre).ChannelSpectra.PhaseCoherence(iParticipant,iCondition,:,:) ...
+                      = LocalSpectra.(affectedCentre).ChannelSpectra.GrandAverage.PhaseCoherence;
 
                     end
 
@@ -695,12 +772,20 @@ if impute
              = mean( LocalSpectra.(currentCentre).SpectralPower,  1, 'omitnan' );
         LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence ...
              = mean( LocalSpectra.(currentCentre).PhaseCoherence, 1, 'omitnan' );
+        LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.SpectralPower  ...
+             = mean( LocalSpectra.(currentCentre).ChannelSpectra.SpectralPower,  1, 'omitnan' );
+        LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.PhaseCoherence ...
+             = mean( LocalSpectra.(currentCentre).ChannelSpectra.PhaseCoherence, 1, 'omitnan' );
     
         % Clean up
         LocalSpectra.(currentCentre).GrandAverage.SpectralPower  ...
              = squeeze( LocalSpectra.(currentCentre).GrandAverage.SpectralPower  );
         LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence ...
              = squeeze( LocalSpectra.(currentCentre).GrandAverage.PhaseCoherence );
+        LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.SpectralPower  ...
+             = squeeze( LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.SpectralPower  );
+        LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.PhaseCoherence ...
+             = squeeze( LocalSpectra.(currentCentre).ChannelSpectra.GrandAverage.PhaseCoherence );
     
     end % for Window centres
 
@@ -835,27 +920,27 @@ if length( iChannels ) > 1 || ( isempty( iChannels ) && length( iDecompositionCh
 
     % Frontal midline cluster including FCz & Fz
     if any( iSelectedChannels == iFCz ) && any( iSelectedChannels == iFz )
-        locationName = 'FMidCluster';
+        locationName = 'FrontalMidlineClusterFzFCz';
 
     % Frontal midline cluster including FCz
     elseif any( iSelectedChannels == iFCz ) && ~any( iSelectedChannels == iFz )
-        locationName = 'FCzCluster';
+        locationName = 'FrontalFCzCluster';
 
     % Frontal midline cluster including Fz
     elseif any( iSelectedChannels == iFz ) && ~any( iSelectedChannels == iFCz )
-        locationName = 'FzCluster';
+        locationName = 'FrontalFzCluster';
 
     % Frontal bilateral cluster including F3 & F4
     elseif any( iSelectedChannels == iF3 ) && any( iSelectedChannels == iF4 ) && ~any( iSelectedChannels == iFz )
-        locationName = 'FBiCluster';
+        locationName = 'FrontalBilateralCluster';
 
     % Parietal midline cluster including Pz & CPz
-    elseif any( iSelectedChannels == iPz ) && ~any( iSelectedChannels == iCPz )
-        locationName = 'PcMidCluster';
+    elseif any( iSelectedChannels == iPz ) && any( iSelectedChannels == iCPz )
+        locationName = 'ParietalMidlineClusterPzCPz';
 
     % Parietal midline cluster including Pz
     elseif any( iSelectedChannels == iPz ) && ~any( iSelectedChannels == iCPz ) && ~any( iSelectedChannels == iPOz )
-        locationName = 'PzCluster';
+        locationName = 'ParietalPzCluster';
 
     % Parietal midline cluster including Pz & POz
     elseif any( iSelectedChannels == iPz ) && any( iSelectedChannels == iPOz )
@@ -867,19 +952,19 @@ if length( iChannels ) > 1 || ( isempty( iChannels ) && length( iDecompositionCh
 
     % Occipital midline cluster including Oz & POz
     elseif any( iSelectedChannels == iOz ) && any( iSelectedChannels == iPOz )
-        locationName = 'OMidCluster';
+        locationName = 'OccipitalMidlineClusterOzPOz';
 
     % Occipital midline cluster including Oz
     elseif any( iSelectedChannels == iOz ) && ~any( iSelectedChannels == iPOz )
-        locationName = 'OzCluster';
+        locationName = 'OccipitalOzCluster';
 
     % Bilateral parietal cluster including P7 & P8
     elseif any( iSelectedChannels == iP7 ) && any( iSelectedChannels == iP8 )
-        locationName = 'PBiCluster';
+        locationName = 'ParietalBilateralCluster';
 
     % Occipitoparietal bilateral cluster including PO7 & PO8
     elseif any( iSelectedChannels == iPO7 ) && any( iSelectedChannels == iPO8 )
-        locationName = 'OPBiCluster';
+        locationName = 'OccipitoparietalBilateralCluster';
 
     % Individual electrodes named Channel1Channel2...ChannelN
     else
