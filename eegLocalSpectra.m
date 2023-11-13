@@ -570,12 +570,17 @@ for f = 1:nFiles
             spectralPower  = NaN( nChannels, nFrequencies, nTimes.(currentCentre) );
             phaseCoherence = NaN( nChannels, nFrequencies, nTimes.(currentCentre) );
             disp( [ '[' 8 'Warning: ' currentCentre '-related data in ' currentFile ' contains too-few or no trials' ']' 8 ] )
-        
+
+            % Pre-allocate to index all event windows if one needs imputation
+            if nCentres > 1 && w == 1
+                Imputations(f).AffectedEventWindows = false( 1, nCentres );
+            end
+
             % Store the information needed to impute the correct data
-            Imputations(f).File                    = currentFile; 
-            Imputations(f).AffectedEventWindows(w) = true;
-            Imputations(f).ParticipantIndex        = iParticipant;
-            Imputations(f).ConditionIndex          = iCondition;
+            Imputations(f).File                     = currentFile; 
+            Imputations(f).AffectedEventWindows(w)  = true;
+            Imputations(f).ParticipantIndex         = iParticipant;
+            Imputations(f).ConditionIndex           = iCondition;
         
         end
 
