@@ -1,5 +1,5 @@
 function ...
-eegTimeFrequency123( setName, frequencyLimits, frequencyResolution, blending )
+eegTimeFrequency3EventRelated( setName, frequencyLimits, frequencyResolution, blending )
 %
 % •.° Time-Frequency Decompositions of Event-Related EEG °.•
 % _________________________________________________________________________
@@ -23,12 +23,13 @@ eegTimeFrequency123( setName, frequencyLimits, frequencyResolution, blending )
 % Edit the configuration of the EEG data in the code
 % Set the Current Folder to the location of the datasets or the base folder
 %
-% >> eegTimeFrequency( setName, frequencyLimits, frequencyResolution, blending )
+% >> eegTimeFrequency3EventRelated( setName, frequencyLimits, frequencyResolution, blending )
 %
 % For example:
-% >> eegTimeFrequency( 'Memory' )
-% >> eegTimeFrequency( 'Memory', [ 2 30 ], 30, 'sigmoid' )
-% >> eegTimeFrequency( 'Memory', [], 0, 'smooth' )
+% >> eegTimeFrequency3EventRelated
+% >> eegTimeFrequency3EventRelated( 'Flanker' )
+% >> eegTimeFrequency3EventRelated( '', [ 2 30 ], 25, 'sigmoid' )
+% >> eegTimeFrequency3EventRelated( 'Flanker', [], 0, 'smooth' )
 %
 %  <-- - -  -   -     -        -             -        -     -   -  - - -->
 %
@@ -37,7 +38,7 @@ eegTimeFrequency123( setName, frequencyLimits, frequencyResolution, blending )
 %   setName:             Part of the file name that is common to all the 
 %                         EEGLAB datasets to be decomposed that are located 
 %                         in the Current Folder and sub-folders of the
-%                         Current Folder, for example 'Memory' or ''
+%                         Current Folder, for example 'Flanker' or ''
 %                         (optional input, default all datasets)
 %
 %   frequencyLimits:     Frequencies in Hz to extract as [minimum maximum]
@@ -92,8 +93,8 @@ eegTimeFrequency123( setName, frequencyLimits, frequencyResolution, blending )
 %
 % Please cite this code if you use it
 %
-% King, R. (2023). eegTimeFrequency123 [MATLAB code]. GitHub. 
-%  https://github.com/neuroro/EEG/eegTimeFrequency123.m
+% King, R. (2023). eegTimeFrequency3EventRelated [MATLAB code]. GitHub. 
+%  https://github.com/neuroro/EEG/eegTimeFrequency3EventRelated.m
 
 
 %% Startup
