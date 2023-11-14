@@ -96,6 +96,12 @@ eegTimeFrequency123( setName, frequencyLimits, frequencyResolution, blending )
 %  https://github.com/neuroro/EEG/eegTimeFrequency123.m
 
 
+%% Startup
+% -------------------------------------------------------------------------
+
+% Initialise EEGLAB
+eegStartup
+
 % Introduction
 disp( ' ' )
 disp( '•.° EEG Time-Frequency Decomposition °.•' )
@@ -110,23 +116,24 @@ disp( 'the original folder' )
 disp( ' ' )
 
 
-%% Configuration
-% -------------------------------------------------------------------------
+%% • CONFIGURATION •
+% _________________________________________________________________________
+%
+# % CONFIGURE THESE PARAMETERS FOR YOUR STUDY AND DELETE THE #'s
+
 
 % Participant code prefix of the participant number in the file name
 % For example 'P' 'S' 'Participant' 'sub-'
-participantPrefix = 'P';
+participantPrefix = 'P'; #
 
 % Eriksen Flanker task prefix
 % participantPrefix = 'Flanker';
 
-% !!! INPUT YOUR PARTICPANT CODE PREFIX !!!
-
 
 % Event-related windows in order
-EventRelatedWindows.Window1 = 'Stimulus';
-EventRelatedWindows.Window2 = 'Initiation';
-EventRelatedWindows.Window3 = 'Response';
+EventRelatedWindows.Window1 = 'Stimulus';   #
+EventRelatedWindows.Window2 = 'Initiation'; #
+EventRelatedWindows.Window3 = 'Response';   #
 
 
 % Stimulus event labels for each condition
@@ -136,7 +143,7 @@ EventRelatedWindows.Window3 = 'Response';
 % and a response decision event
 
 % Generic task
-ConditionEvents.Task    = { 'Stimulus' };
+ConditionEvents.Task    = { 'Stimulus' };   #
 
 % Eriksen flanker task
 ConditionEvents.Flanker = { 'cC-R' ...
@@ -148,9 +155,9 @@ ConditionEvents.Flanker = { 'cC-R' ...
                             'iI-R' ...
                             'iI-S' };
 
-% !!! INPUT YOUR CONDITIONS !!!
-conditions              = ConditionEvents.Task;
-% conditions              = ConditionEvents.Flanker;
+% Select task conditions from stimulus events
+conditions              = ConditionEvents.Task;     #
+conditions              = ConditionEvents.Flanker;
 
 
 % Initiation event label
@@ -159,21 +166,21 @@ conditions              = ConditionEvents.Task;
 % initiation of response event, and a response decision event
 
 % Generic task
-InitiationEvents.Task    = { 'Initiation' };
+InitiationEvents.Task    = { 'Initiation' }; #
 
 % Eriksen flanker task
 InitiationEvents.Flanker = { 'cC-R-Init' ...
-                      'cC-S-Init' ...
-                      'iC-R-Init' ...
-                      'iC-S-Init' ...
-                      'cI-R-Init' ...
-                      'cI-S-Init' ...
-                      'iI-R-Init' ...
-                      'iI-S-Init' };
+                             'cC-S-Init' ...
+                             'iC-R-Init' ...
+                             'iC-S-Init' ...
+                             'cI-R-Init' ...
+                             'cI-S-Init' ...
+                             'iI-R-Init' ...
+                             'iI-S-Init' };
 
-% !!! INPUT YOUR INITIATION !!!
-initiation               = InitiationEvents.Task;
-% initiation               = InitiationEvents.Flanker;
+% Select task initiation events
+initiation               = InitiationEvents.Task;   #
+initiation               = InitiationEvents.Flanker;
 
 
 % Resonse event labels
@@ -183,7 +190,7 @@ initiation               = InitiationEvents.Task;
 % labelled per response type but are not extracted separately
 
 % Generic task
-ResponseEvents.Task    = { 'Response' };
+ResponseEvents.Task    = { 'Response' }; #
 
 % Eriksen flanker task
 ResponseEvents.Flanker = { 'cC-R-Resp' ...
@@ -195,30 +202,28 @@ ResponseEvents.Flanker = { 'cC-R-Resp' ...
                            'iI-R-Resp' ...
                            'iI-S-Resp' };
 
-% !!! INPUT YOUR RESPONSE TYPES !!!
-responses              = ResponseEvents.Task;
-% responses              = ResponseEvents.Flanker;
+% Select task response types
+responses              = ResponseEvents.Task;   #
+responses              = ResponseEvents.Flanker;
 
 
 % Time parameters
 % -------------------------------------------------------------------------
 
-% !!! INPUT YOUR TIMES !!!
-
 % Sampling rate
-samplingRate     = 1000;
+samplingRate     = 1000; #
 
 % Trial limits
-baselineLimits   = [ -500 0    ];   % Relative to stimulus time
-stimulusLimits   = [ -200 1000 ];   % Relative to stimulus time
-initiationLimits = [ -500 500  ];   % Relative to initiation time
-responseLimits   = [ -600 500  ];   % Relative to response time
+baselineLimits   = [ -500 0    ]; #  % Relative to stimulus time
+stimulusLimits   = [ -200 1000 ]; #  % Relative to stimulus time
+initiationLimits = [ -500 500  ]; #  % Relative to initiation time
+responseLimits   = [ -600 500  ]; #  % Relative to response time
 
 % Maximum total reaction time for a trial to be valid
-maxReactionTime  = 1500;
+maxReactionTime  = 1500; #
 
 % Minimum initation reaction time for a trial to be valid
-minReactionTime  = 75;
+minReactionTime  = 75; #
 
 % Blending parameters
 blendingDuration = 80;              % Sigmoid blend time points around adjacent event (in ms)
@@ -236,17 +241,17 @@ nTrialsMinimum   = 10;              % Time points with fewer trials than this nu
 % -------------------------------------------------------------------------
 % For example '10-10' '10-20' 'Indices' 'Brain Products' 'Biosemi' 'EGI'
 
-capSystem = 'International';
+capSystem = 'International'; #
 
 
 % Channels of interest
 % -------------------------------------------------------------------------
 
 % International 10-10 system
-ChannelSets.Frontal1010      = { 'Fz'  'F3'  'F4' 'FCz' };
-ChannelSets.Parietal1010     = { 'PO7' 'PO8' 'P7' 'P8'  };
-ChannelSets.Occipital1010    = {};
-ChannelSets.Temporal1010     = {};
+ChannelSets.Frontal1010      = { 'Fz'  'F3'  'F4' 'FCz' };  #
+ChannelSets.Parietal1010     = { 'PO7' 'PO8' 'P7' 'P8'  };  #
+ChannelSets.Occipital1010    = {};                          #
+ChannelSets.Temporal1010     = {};                          #
 
 % EGI system
 ChannelSets.FrontalEGI       = { 'E11' 'E5'  'E12' 'E6'  };
@@ -261,7 +266,8 @@ ChannelSets.OccipitalIndices = [];
 ChannelSets.TemporalIndices  = [];
 
 
-% !!! INPUT YOUR CAP SYSTEM AND CHANNELS !!!
+% -------------------------------------------------------------------------
+% • END OF CONFIGURATION •
 
 
 %% Default inputs
@@ -506,8 +512,8 @@ for n = 1:nFiles
     end
 
     % Loop through: Conditions
-%    parfor c = 1:nConditions
-    for c = 1:nConditions
+    parfor c = 1:nConditions
+%    for c = 1:nConditions
 
         % Current condition event label
         condition       = conditions{c};
@@ -812,10 +818,13 @@ for n = 1:nFiles
 
                         % Store in struct
                         Decomposition.(trialCentre).SpectralPower(trial,ch,:,:)  = powerWindow;
-                        Decomposition.(trialCentre).SpectralPowerUnits           = powerUnits;
-                        Decomposition.(trialCentre).SpectralPowerDimensions      = 'Channels x Frequencies x Times'; % As it will be after averaging
                         Decomposition.(trialCentre).PhaseDirection(trial,ch,:,:) = phaseWindow;
                         Decomposition.(trialCentre).Coefficients(trial,ch,:,:)   = wavesWindow;
+                        Decomposition.(trialCentre).SpectralPowerUnits           = powerUnits;
+                        Decomposition.(trialCentre).SpectralPowerDimensions      = 'Channels x Frequencies x Times'; % As it will be after averaging
+                        Decomposition.(trialCentre).PhaseCoherenceUnits          = 'Phase alignment proportion';
+                        Decomposition.(trialCentre).PhaseCoherenceDimensions     = 'Channels x Frequencies x Times';
+                        Decomposition.(trialCentre).CoefficientsUnits            = 'Complex magnitude';
                         Decomposition.(trialCentre).CoefficientsDimensions       = 'Trials x Channels x Frequencies x Times';
                         Decomposition.(trialCentre).Frequencies                  = frequencies;
                         Decomposition.(trialCentre).FrequenciesUnits             = 'Hz';
@@ -1038,6 +1047,7 @@ end
 %%
 % •.° Median, Savitsky-Golay, and Gaussian filter blending °.•
 % _________________________________________________________________________
+%
 function ...
 Decomposition = filterBlend( Decomposition, centre, trialCentre, blending, ...
                              neighbourhood, order, frames, sigmaGauss )
@@ -1173,8 +1183,40 @@ end
 
 
 %%
+% •.° EEGLAB Initialisation
+% _________________________________________________________________________
+%
+function eegStartup
+
+% Check if EEGLAB is being used in the Base Workspace
+existenceCommand      = "exist( 'globalvars', 'var' ) || exist( 'tmpEEG', 'var' )";
+baseVariableExistence = evalin( "base", existenceCommand );
+
+% Initialise EEGLAB
+eeglab nogui
+
+% Clear global variables
+clearvars -global ALLCOM ALLEEG CURRENTSET CURRENTSTUDY EEG LASTCOM PLUGINLIST STUDY ALLERP
+
+% Clear variables set in the Base Workspace unless they are being used
+if ~baseVariableExistence
+    evalin( "base", "clearvars globalvars tmpEEG" )
+end
+
+% Reset the Command Window without clearing
+home
+
+
+% _________________________________________________________________________
+end
+
+
+
+
+%%
 % •.° Decomposition Run Time °.•
 % _________________________________________________________________________
+%
 function timeFrequencyRunTime( message )
 
 % Time
@@ -1187,6 +1229,7 @@ if exist( 'message', 'var' )
 else
     disp( theTimeIs )
 end
+disp( ' ' )
 
 
 % _________________________________________________________________________
@@ -1197,6 +1240,7 @@ end
 %%
 % •.° Parallel Save °.•
 % _________________________________________________________________________
+%
 function timeFrequencyParallelSave( fileName, structOfVariablesToSave )
 
 save( fileName, '-struct', 'structOfVariablesToSave', '-v7.3' )
