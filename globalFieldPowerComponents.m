@@ -302,17 +302,27 @@ end
 %%
 % •.° EEGLAB Initialisation
 % _________________________________________________________________________
+%
 function eegStartup
 
-% Check if EEGLAB is being used in the Base Workspace
+% Check if EEGLAB is being used
+eeglabVariableUsage   = ( exist( 'EEG',    'var' ) && ~isempty( EEG )    && ~isempty( EEG.data ) )       || ...
+                        ( exist( 'ALLEEG', 'var' ) && ~isempty( ALLEEG ) && ~isempty( ALLEEG(1).data ) ) || ...
+                        ( exist( 'STUDY',  'var' ) && ~isempty( STUDY ) );
+erplabVariableUsage   =   exist( 'ALLERP', 'var' ) && ~isempty( ALLERP );
 existenceCommand      = "exist( 'globalvars', 'var' ) || exist( 'tmpEEG', 'var' )";
 baseVariableExistence = evalin( "base", existenceCommand );
 
 % Initialise EEGLAB
 eeglab nogui
 
-% Clear global variables
-clearvars -global ALLCOM ALLEEG CURRENTSET CURRENTSTUDY EEG LASTCOM PLUGINLIST STUDY
+% Clear global variables unless they are being used
+if ~eeglabVariableUsage
+    clearvars -global ALLCOM ALLEEG CURRENTSET CURRENTSTUDY EEG LASTCOM PLUGINLIST STUDY
+end
+if ~erplabVariableUsage
+    clearvars -global ALLERP
+end
 
 % Clear variables set in the Base Workspace unless they are being used
 if ~baseVariableExistence
