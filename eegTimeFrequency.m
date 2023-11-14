@@ -121,10 +121,10 @@ disp( ' ' )
 
 % Participant code prefix of the participant number in the file name
 % For example 'P' 'S' 'Participant' 'sub-'
-participantCode = 'P'; #
+participantPrefix = 'P'; #
 
 % Standard recognition task familiarity recode prefix
-% participantCode = 'Familiarity';
+% participantPrefix = 'Familiarity';
 
 
 % Event-related windows in order
@@ -152,7 +152,7 @@ ConditionEvents.Recognition = { 'Familiar' 'Recognised' 'Misidentified'     ...
 ConditionEvents.Altruism    = { 'AccH' 'AccM' 'AccL' 'ShaH' 'ShaM' 'ShaL' };
 
 % Select task conditions
-conditions                  = ConditionEvents.Task; #
+conditions                  = ConditionEvents.Task;     #
 conditions                  = ConditionEvents.Probes;
 conditions                  = ConditionEvents.Recognition;
 conditions                  = ConditionEvents.Altruism;
@@ -224,10 +224,10 @@ capSystem = 'International'; #
 % -------------------------------------------------------------------------
 
 % International 10-10 system
-ChannelSets.Frontal1010      = { 'Fz'  'F3'  'F4' }; #
-ChannelSets.Parietal1010     = { 'PO7' 'PO8' 'P7' 'P8' }; #
-ChannelSets.Occipital1010    = {}; #
-ChannelSets.Temporal1010     = {}; #
+ChannelSets.Frontal1010      = { 'Fz'  'F3'  'F4' };        #
+ChannelSets.Parietal1010     = { 'PO7' 'PO8' 'P7' 'P8' };   #
+ChannelSets.Occipital1010    = {};                          #
+ChannelSets.Temporal1010     = {};                          #
 
 % EGI system
 ChannelSets.FrontalEGI       = { 'E11' 'E24' 'E124' };
@@ -766,6 +766,8 @@ for n = 1:nFiles
                         Decomposition.(trialCentre).BaselinePower(trial,ch,:)    = baseline;
                         Decomposition.(trialCentre).BaselinePowerUnits           = 'Decibel volts^2';
                         Decomposition.(trialCentre).BaselinePowerDimensions      = 'Trials x Channels x Frequencies';
+                        Decomposition.(trialCentre).BaselineTimeLimits           = baselineLimit;
+                        Decomposition.(trialCentre).BaselineTimeLimitsUnits      = 'milliseconds';
                         Decomposition.(trialCentre).ChannelNames                 = channelsSet;
                         Decomposition.(trialCentre).ChannelIndices               = channels;
                         Decomposition.(trialCentre).ChannelCoordinates           = EEG.chanlocs;
@@ -902,7 +904,7 @@ for n = 1:nFiles
         % -----------------------------------------------------------------
 
         % File name
-        [ iP, iXn ]  = regexp( currentFile, [ participantCode '[0-9]+' ] );
+        [ iP, iXn ]  = regexp( currentFile, [ participantPrefix '[0-9]+' ] );
         participant  = currentFile(iP:iXn);
         fileName     = [ 'TimeFrequencyData' participant conditionsNames{c} ];
         fileFullPath = fullfile( currentFolder, fileName );
@@ -1122,7 +1124,7 @@ baseVariableExistence = evalin( "base", existenceCommand );
 eeglab nogui
 
 % Clear global variables
-clearvars -global ALLCOM ALLEEG CURRENTSET CURRENTSTUDY EEG LASTCOM PLUGINLIST STUDY
+clearvars -global ALLCOM ALLEEG CURRENTSET CURRENTSTUDY EEG LASTCOM PLUGINLIST STUDY ALLERP
 
 % Clear variables set in the Base Workspace unless they are being used
 if ~baseVariableExistence
