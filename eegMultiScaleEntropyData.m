@@ -16,7 +16,6 @@ function eegMultiScaleEntropyData( timeScales, setName )
 %
 % • Usage •
 % -------------------------------------------------------------------------
-% Function:
 % >> eegMultiScaleEntropyData( timeScales, setName )
 %
 % Examples:
@@ -24,16 +23,19 @@ function eegMultiScaleEntropyData( timeScales, setName )
 % >> eegMultiScaleEntropyData( 20, '' )
 % >> eegMultiScaleEntropyData( [1 20], 'Rest' )
 % 
-% Inputs:
-%   timeScales: Estimate entropy for scales 1 to the specified scale or
-%               specify a vector of scale limits or of individual scales
-%               (optional input, default scales 1 - 20)
-%   setName:    Name in common to the datasets, for example 'Memory' or
-%               'Rest', or '' for all datasets in the Current Folder and
-%               sub-folders of the Current Folder
-%               (optional input, default all datasets)
+% •••( Function Inputs )
 %
-% Outputs:
+%   timeScales: Estimate entropy for scales 1 to the specified scale or
+%                specify a vector of scale limits or of individual scales
+%                (optional input, default scales 1 - 20)
+%
+%   setName:    Name in common to the datasets, for example 'Memory' or
+%                'Rest', or '' for all datasets in the Current Folder and
+%                sub-folders of the Current Folder
+%                (optional input, default all datasets)
+%
+% [ Function Outputs ] =
+%
 %   <Dataset>MSE.mat files for each dataset containing individual CMSE at
 %   the single-trial level
 %
@@ -49,7 +51,7 @@ function eegMultiScaleEntropyData( timeScales, setName )
 %
 % The compositeMultiScaleEntropy, coarseGrain, and sampleEntropy
 % sub-functions that calculate CMSE in this code were written with
-% reference to Wu et al. (2013), Lee (2012), and Lu and Wang (2021).
+% reference to Wu et al. (2013), to Lee (2012), and to Lu and Wang (2021).
 %
 % Estimated reliability of CMSE as a function of signal length is in
 % reference to Wu et al. (2013). Estimated accuracy of sample entropy
@@ -83,6 +85,12 @@ function eegMultiScaleEntropyData( timeScales, setName )
 %   1069-1084.
 
 
+%% Startup
+% -------------------------------------------------------------------------
+
+% Initialise EEGLAB
+eegStartup
+
 % Introduction
 disp( ' ' )
 disp( '•.° Composite Multi-Scale Entropy °.•' )
@@ -113,7 +121,7 @@ aWildError = [ 'Input a name in common to all EEGLAB datasets ' ...
                'located in the Current Folder and sub-folders ' ...
                'to measure the composite multi-scale entropy '  ...
                'that is present within them'                    ];
-if nargin < 2
+if ~exist( 'setName', 'var' )
     setName = '';
 end
 if ~ischar( setName ) 
@@ -125,6 +133,8 @@ if ~ischar( setName )
 end
 if isempty( setName )
     aWildDataset = '*.set';
+elseif contains( setName, '.set' )
+    aWildDataset = [ '*' setName ];
 else
     aWildDataset = [ '*' setName '*.set' ];
 end
@@ -401,7 +411,8 @@ end
 
 
 
-%% Composite Multi-Scale Entropy
+%% 
+% •.° Composite Multi-Scale Entropy °.•
 % _________________________________________________________________________
 %
 % Wu, et al. (2013), Lu and Wang (2021)
@@ -418,6 +429,10 @@ if nargin < 3
     distanceThreshold = 0.2; % Default set to 20% to align with Richman and Moorman (2000)
 end
 
+% Tolerance
+% Percentage of the standard deviation of the signal
+r = distanceThreshold * std( signal , 0, 'omitnan' );
+
 % Pre-allocate
 mse = zeros( 1, length( timeScales ) );
 
@@ -430,12 +445,18 @@ for s = timeScales
         % Coarse grained signal
         scaledSignal = coarseGrain( signal(cg:end), s );
 
-        % Tolerance
-        % Percentage of the standard deviation of the coarse-grained signal
-        r = distanceThreshold * std( scaledSignal , 0, 'omitnan' );
+%        % Tolerance
+%        % Percentage of the standard deviation of the coarse-grained signal
+%        r = distanceThreshold * std( scaledSignal , 0, 'omitnan' );
+
+        % Sample entropy (discrete)
+        H = sampleEntropy( scaledSignal, r );
+
+%        % Digamma entropy (continuous)
+%        H = digammaEntropy( scaledSignal );
 
         % Composite multi-scale entropy
-        mse(s) = mse(s) + sampleEntropy( scaledSignal, r ) / s;
+        mse(s) = mse(s) + H / s;
 
     end
 
@@ -447,7 +468,8 @@ end
 
 
 
-%% Coarse-grained signal
+%% 
+% •.° Coarse-grained signal °.•
 % _________________________________________________________________________
 %
 % Wu, et al. (2013)
@@ -474,7 +496,8 @@ end
 
 
 
-%% Sample entropy
+%% 
+% •.° Sample entropy °.•
 % _________________________________________________________________________
 %
 % For embedding dimension, m = 2, and a tolerance, r
@@ -529,51 +552,62 @@ end
 
 
 
-%% MSE run time
+%%
+% •.° EEGLAB Initialisation
 % _________________________________________________________________________
+%
+function eegStartup
 
+% Check if EEGLAB is being used
+eeglabVariableUsage   = ( exist( 'EEG',    'var' ) && ~isempty( EEG )    && ~isempty( EEG.data ) )       || ...
+                        ( exist( 'ALLEEG', 'var' ) && ~isempty( ALLEEG ) && ~isempty( ALLEEG(1).data ) ) || ...
+                        ( exist( 'STUDY',  'var' ) && ~isempty( STUDY ) );
+erplabVariableUsage   =   exist( 'ALLERP', 'var' ) && ~isempty( ALLERP );
+existenceCommand      = "exist( 'globalvars', 'var' ) || exist( 'tmpEEG', 'var' )";
+baseVariableExistence = evalin( "base", existenceCommand );
+
+% Initialise EEGLAB
+eeglab nogui
+
+% Clear global variables unless they are being used
+if ~eeglabVariableUsage
+    clearvars -global ALLCOM ALLEEG CURRENTSET CURRENTSTUDY EEG LASTCOM PLUGINLIST STUDY
+end
+if ~erplabVariableUsage
+    clearvars -global ALLERP
+end
+
+% Clear variables set in the Base Workspace unless they are being used
+if ~baseVariableExistence
+    evalin( "base", "clearvars globalvars tmpEEG" )
+end
+
+% Reset the Command Window without clearing
+home
+
+
+% _________________________________________________________________________
+end
+
+
+
+%% 
+% •.° MSE run time °.•
+% _________________________________________________________________________
 function mseRunTime( message )
 
-% Clock
-clockTime = clock;
-hours     = clockTime(4);
-minutes   = clockTime(5);
-
-% 12-hour
-if hours && hours < 12
-    meridian = 'a.m.';
-elseif hours == 12
-    meridian = 'p.m.';
-elseif hours > 12
-    hours    = hours - 12;
-    meridian = 'p.m.';
-else
-    hours    = 12;
-    meridian = 'a.m.';
-end
-
-% Trailling zero
-if minutes < 10
-    tm = '0';
-else
-    tm = '';
-end
-
-% Time text
-hoursText   = num2str( hours   );
-minutesText = num2str( minutes );
-timeText    = [ hoursText ':' tm minutesText ' ' meridian ];
+% Time
+theTimeIs = datetime( 'now' );
+theTimeIs = char( theTimeIs );
 
 % Print
 if exist( 'message', 'var' )
-    disp( [ message ' ' timeText ] );
+    disp( [ message ' ' theTimeIs ] )
 else
-    disp( timeText );
+    disp( theTimeIs )
 end
 disp( ' ' )
 
 
 % _________________________________________________________________________
 end
-
-

@@ -86,6 +86,12 @@ function eegMultiScaleEntropy( timeScales, setName )
 %   1069-1084.
 
 
+%% Startup
+% -------------------------------------------------------------------------
+
+% Initialise EEGLAB
+eegStartup
+
 % Introduction
 disp( ' ' )
 disp( '•.° Composite Multi-Scale Entropy °.•' )
@@ -461,7 +467,8 @@ end
 
 
 
-%% Composite Multi-Scale Entropy
+%% 
+% •.° Composite Multi-Scale Entropy °.•
 % _________________________________________________________________________
 %
 % Wu, et al. (2013), Lu and Wang (2021)
@@ -478,6 +485,10 @@ if nargin < 3
     distanceThreshold = 0.2; % Default set to 20% to align with Richman and Moorman (2000)
 end
 
+% Tolerance
+% Percentage of the standard deviation of the signal
+r = distanceThreshold * std( signal , 0, 'omitnan' );
+
 % Pre-allocate
 mse = zeros( 1, length( timeScales ) );
 
@@ -490,12 +501,18 @@ for s = timeScales
         % Coarse grained signal
         scaledSignal = coarseGrain( signal(cg:end), s );
 
-        % Tolerance
-        % Percentage of the standard deviation of the coarse-grained signal
-        r = distanceThreshold * std( scaledSignal , 0, 'omitnan' );
+%        % Tolerance
+%        % Percentage of the standard deviation of the coarse-grained signal
+%        r = distanceThreshold * std( scaledSignal , 0, 'omitnan' );
+
+        % Sample entropy (discrete)
+        H = sampleEntropy( scaledSignal, r );
+
+%        % Digamma entropy (continuous)
+%        H = digammaEntropy( scaledSignal );
 
         % Composite multi-scale entropy
-        mse(s) = mse(s) + sampleEntropy( scaledSignal, r ) / s;
+        mse(s) = mse(s) + H / s;
 
     end
 
@@ -507,7 +524,8 @@ end
 
 
 
-%% Coarse-grained signal
+%% 
+% •.° Coarse-grained signal °.•
 % _________________________________________________________________________
 %
 % Wu, et al. (2013)
@@ -534,7 +552,8 @@ end
 
 
 
-%% Sample entropy
+%% 
+% •.° Sample entropy °.•
 % _________________________________________________________________________
 %
 % For embedding dimension, m = 2, and a tolerance, r
@@ -589,46 +608,60 @@ end
 
 
 
-%% MSE run time
+%%
+% •.° EEGLAB Initialisation
 % _________________________________________________________________________
+%
+function eegStartup
 
+% Check if EEGLAB is being used
+eeglabVariableUsage   = ( exist( 'EEG',    'var' ) && ~isempty( EEG )    && ~isempty( EEG.data ) )       || ...
+                        ( exist( 'ALLEEG', 'var' ) && ~isempty( ALLEEG ) && ~isempty( ALLEEG(1).data ) ) || ...
+                        ( exist( 'STUDY',  'var' ) && ~isempty( STUDY ) );
+erplabVariableUsage   =   exist( 'ALLERP', 'var' ) && ~isempty( ALLERP );
+existenceCommand      = "exist( 'globalvars', 'var' ) || exist( 'tmpEEG', 'var' )";
+baseVariableExistence = evalin( "base", existenceCommand );
+
+% Initialise EEGLAB
+eeglab nogui
+
+% Clear global variables unless they are being used
+if ~eeglabVariableUsage
+    clearvars -global ALLCOM ALLEEG CURRENTSET CURRENTSTUDY EEG LASTCOM PLUGINLIST STUDY
+end
+if ~erplabVariableUsage
+    clearvars -global ALLERP
+end
+
+% Clear variables set in the Base Workspace unless they are being used
+if ~baseVariableExistence
+    evalin( "base", "clearvars globalvars tmpEEG" )
+end
+
+% Reset the Command Window without clearing
+home
+
+
+% _________________________________________________________________________
+end
+
+
+
+%% 
+% •.° MSE run time °.•
+% _________________________________________________________________________
+%
 function mseRunTime( message )
 
-% Clock
-clockTime = clock;
-hours     = clockTime(4);
-minutes   = clockTime(5);
-
-% 12-hour
-if hours && hours < 12
-    meridian = 'a.m.';
-elseif hours == 12
-    meridian = 'p.m.';
-elseif hours > 12
-    hours    = hours - 12;
-    meridian = 'p.m.';
-else
-    hours    = 12;
-    meridian = 'a.m.';
-end
-
-% Trailling zero
-if minutes < 10
-    tm = '0';
-else
-    tm = '';
-end
-
-% Time text
-hoursText   = num2str( hours   );
-minutesText = num2str( minutes );
-timeText    = [ hoursText ':' tm minutesText ' ' meridian ];
+% Time
+theTimeIs = datetime( 'now' );
+theTimeIs = char( theTimeIs );
 
 % Print
 if exist( 'message', 'var' )
-    disp( [ message ' ' timeText ] );
+    disp( [ message ' ' theTimeIs ] )
 else
-    disp( timeText );
+    disp( theTimeIs )
 end
 disp( ' ' )
 
