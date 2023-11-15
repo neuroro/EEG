@@ -303,6 +303,9 @@ end
 if matches( 'all', channels, 'IgnoreCase', true )
     channels = [];
 end
+if ischar( channels )
+    channels = { channels };
+end
 if ischar( weighting ) || isstring( weighting )
     if matches( 'unweighted', weighting, 'IgnoreCase', true )
         weighting = false;
@@ -317,6 +320,7 @@ try
 catch
     iDecompositionChannels = Decomposition.(eventCentres{1}).Channels;
 end
+nDecompositionChannels     = length( iDecompositionChannels );
 ChannelCoordinates         = Decomposition.(eventCentres{1}).ChannelCoordinates;    % Channel co-ordinates
 decompositionChannelNames  = { ChannelCoordinates(:).labels };
 
@@ -382,7 +386,7 @@ end
 
 % Channel weighting
 if ~weighting
-    weights                 = 1;
+    weights = 1;
 elseif weighting
     [ weights, oneSDratio ] = electrodeClusterWeights( iChannels );
     LocalSpectra.(eventCentres{w}).Weighting.CentralChannel       = channelNames{1};
@@ -550,10 +554,10 @@ for f = 1:nFiles
         if currentExistence && trialCount >= minimumTrialCount
 
             % Copy data from the current decomposition
-            if nChannels == 1
+            if nDecompositionChannels == 1
                 spectralPower(1,:,:)  = Decomposition.(currentCentre).SpectralPower;                   % Frequencies x times
                 phaseCoherence(1,:,:) = Decomposition.(currentCentre).PhaseCoherence;                  % Frequencies x times
-            elseif nChannels > 1
+            elseif nDecompositionChannels > 1
                 spectralPower         = Decomposition.(currentCentre).SpectralPower(iChannels,:,:);    % Channels x frequencies x times
                 phaseCoherence        = Decomposition.(currentCentre).PhaseCoherence(iChannels,:,:);   % Channels x frequencies x times
             end
