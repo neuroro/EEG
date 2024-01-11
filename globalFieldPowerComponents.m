@@ -1,6 +1,6 @@
 function Ct = globalFieldPowerComponents( setName, smoothing )
 %
-% •.° ERP Component Times In Global Field Power °.•
+% •.° ERP Component Times Using Global Field Power °.•
 % _________________________________________________________________________
 %
 % Calculate global field power (GFP), the spatial standard deviation, of
@@ -10,13 +10,13 @@ function Ct = globalFieldPowerComponents( setName, smoothing )
 % potential (ERP)
 %
 % Savitsky-Golay filtering may help resolve candidate ERP components in
-% data with a lower signal-to-noise ratio
+% data with a lower signal-to-noise ratio (or data with fewer trials)
 %
 % • Usage •
 % -------------------------------------------------------------------------
-% Set the Current Folder to the location of the EEGLAB datasets (including
-% sub-folders) from which to extract global field power and candidate ERP
-% component latencies
+% Set the Current Folder to the location (including sub-folders) of EEG
+% data stored in EEGLAB datasets, from which to extract global field power
+% and candidate ERP component latencies
 %
 % >> Ct = globalFieldPowerComponents( setName, smoothing );
 %
@@ -103,7 +103,7 @@ disp( ' ' )
 
 % Dataset naming
 if ~exist( 'setName', 'var' )
-    setName   = '';
+    setName = '';
 end
 
 % Savitsky-Golay polynomial order and window length
@@ -265,7 +265,7 @@ for f = 1:nFiles
     end
 
     % Save figure
-    savefig( [ aDataset 'GlobalFieldPower' ] )
+    savefig( [ aDataset 'GlobalFieldPower.fig' ] )
 
     clf
 
@@ -284,7 +284,7 @@ for f = 1:nFiles
     end
 
     % Save figure
-    savefig( [ aDataset 'SmoothGlobalFieldPower' ] )
+    savefig( [ aDataset 'SmoothGlobalFieldPower.fig' ] )
     
 
 end % for Dataset files
@@ -300,7 +300,7 @@ end
 
 
 %%
-% •.° EEGLAB Initialisation
+% •.° EEGLAB Initialisation °.•
 % _________________________________________________________________________
 %
 function eegStartup
