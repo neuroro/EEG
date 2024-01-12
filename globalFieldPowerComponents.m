@@ -94,7 +94,7 @@ disp( 'obtain candidate peak latencies for components of the event-related'     
 disp( 'potential (ERP)'                                                         )
 disp( ' ' )
 disp( 'Savitsky-Golay filtering may help resolve candidate ERP components in'   )
-disp( 'data with a lower signal-to-noise ratio'                                 )
+disp( 'data with a lower signal-to-noise ratio (or data with fewer trials)'     )
 disp( ' ' )
 
 
@@ -291,7 +291,9 @@ end % for Dataset files
 
 
 % Save data
-save GlobalFieldPowerComponents Ct
+separator = fileNameSeparator( fileList );
+fileName  = [ setName separator 'Global' separator 'Field' separator 'Power' separator 'Components' ];
+save( fileName, 'Ct' )
 
 
 % _________________________________________________________________________
@@ -337,3 +339,36 @@ home
 end
 
 
+
+%%
+% •.° File Name Separator °.•
+% _________________________________________________________________________
+%
+function separator = fileNameSeparator( fileList )
+
+% Parse file name separators
+nSpacedNames      = sum( contains( fileList, ' ' ) );
+nCompoundNames    = sum( ~contains( fileList, { ' ' '_' '-' } ) );
+nUnderscoredNames = sum( and(  contains( fileList, '_' ), ...
+                              ~contains( fileList, ' ' )  ) );
+nHyphenatedNames  = sum( and(  contains( fileList, '-' ), ...
+                              ~contains( fileList, { ' ' '_' } ) ) );
+
+% Use the majority separator with preferred tie-breaks
+if all( nSpacedNames >= [ nCompoundNames nUnderscoredNames nHyphenatedNames ] )
+    separator = ' ';
+elseif all( nCompoundNames >= [ nUnderscoredNames nHyphenatedNames ] ) ...
+         && nCompoundNames > nSpacedNames
+    separator = '';
+elseif all( nUnderscoredNames > [ nSpacedNames nCompoundNames ] ) ...
+         && nUnderscoredNames >= nHyphenatedNames
+    separator = '_';
+elseif all( nHyphenatedNames > [ nSpacedNames nCompoundNames nUnderscoredNames ] )
+    separator = '-';
+else
+    separator = '';
+end
+
+
+% _________________________________________________________________________
+end
