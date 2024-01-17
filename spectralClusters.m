@@ -1,9 +1,11 @@
-function Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, downsampling )
+function ...
+Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, ...
+                          nPermutations, downsampling,           ...
+                          conditionA, conditionB,                ...
+                          localSpectraA, localSpectraB           )
 %
 % •.° Differential Oscillatory Clusters °.•
 % _________________________________________________________________________
-%
-% !!! THIS IS A WORK IN PROGRESS !!!
 %
 % Test oscillatory differences in neural event-related spectra
 %
@@ -14,13 +16,19 @@ function Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, downsa
 % • Usage •
 % ------------------------------------------------------------------------- 
 % Set the Current Folder to the location of the localised event-related 
-% spectra file TimeFrequency<Cluster>.mat
+% spectra files TimeFrequency<Cluster>.mat
+%
+% Specify the conditions and local spectra files to compare as input
+% arguments of the function or edit the Configuration section of the
+% function code (found below this help text)
 % 
 % >> spectralClusters( pThreshold, frequencyBand, timeLimits, downsampling )
 % 
 % For example:
 % >> spectralClusters
-% >> Stats = spectralClusters( 0.025, 'theta+', [75 600], 250 )
+% >> Stats = spectralClusters( 0.025, 'theta+', [0 1000], 1e5, 250 );
+% >> Stats = spectralClusters( 0.05, [], [], 1e5, 'none' );
+% >> Stats = spectralClusters( 0.05, [], [], 1e5, 250, 'Active', 'Control' );
 %
 % .. . .  .   .     .        .             .                     .                                  .
 %
@@ -42,25 +50,73 @@ function Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, downsa
 %                    'Gamma'      >30 to 80 Hz
 %                    'Low Gamma'  >30 to 50 Hz
 %                    'High Gamma' >50 to 80 Hz
-%                    [f1 f2]      f1 to f2 Hz frequency range
-%                   (optional input: default theta extended to 2.5-8.5 Hz)
+%                    [f1 f2]       f1 to f2 Hz frequency range
+%                    '' or []      all frequencies
+%                   (optional input: default all frequencies)
 %
 %   timeLimits:    Time limits (in ms) to test differences within as a
 %                   scalar of the maximum time for stimulus-related spectra
 %                    with other time limits dervied in proportion to it; a
 %                   [t1 t2] vector of stimulus-related time limits with
-%                    other time limits dervied in proportion to t2; or a
+%                    other time limits dervied in proportion to t2; a
 %                   w x t matrix of time limits (t) for each event-related
-%                    window (w), semicolon-separated in order, for example 
-%                    [t1Stim t2Stim; t1Resp t2Resp]
-%                   (optional input: default 75 - 600 ms after the stimulus
-%                    and -450 - +450 ms around the response)
+%                    window (w), semicolon-separated in alphabetical order,
+%                    for example [t1Stim t2Stim; t1Resp t2Resp]; or 0 or []
+%                    for the whole window
+%                   (optional input: default 0 - 1000 ms after the stimulus
+%                    and -500 - +500 ms around the response and around
+%                    initiation if present)
+%
+%   nPermutations:  Number of Monte Carlo permutations of the data to
+%                    compute to estimate the permutation p-value
+%                   (optional input, default 1e4, but 1e5 or more is
+%                    recommended for stable covergence to the true
+%                    permutation p-value)
 %
 %   downsampling:   Sampling rate (in Hz) to downsample the data to using
-%                    pop-resample from EEGLAB for anti-aliasing, which may
+%                    pop_resample from EEGLAB for anti-aliasing, which may
 %                    be used to speed up the computation time, in case 2-D
 %                    cluster permutation testing takes too long, or 'none'
 %                   (optional input: default 250 Hz)
+%
+%   conditionA:     1st condition to compare as 'ConditionName' or as 
+%                    { 'Condition1' 'Condition2' ... } for the average of
+%                    multiple conditions
+%                   (optional input, otherwise specify in configuration)
+%
+%   conditionB:     2nd condition to compare as 'ConditionName' or as 
+%                    { 'Condition1' 'Condition2' ... } for the average of
+%                    multiple conditions
+%                   (optional input, otherwise specify in configuration)
+%
+%   localSpectraA:  1st file name of EEG time-frequency data to compare
+%                   (optional input, otherwise specify in configuration)
+%
+%   localSpectraB:  2nd file name of EEG time-frequency data to compare
+%                   (optional input, otherwise specify in configuration)
+%
+%   To compare 2 conditions or 2 condition averages within the same local
+%   spectra .mat file:
+%    Specify conditionA and conditionB as their respective 'ConditionName'
+%     or as their respective { 'Condition1' 'Condition2' ... } for averages
+%     of multiple conditions
+%    Specify localSpectraA (localSpectraB defaults to the same file)
+%
+%   To compare 2 groups in separate local spectra .mat files, within the 
+%   same condition or condition average:
+%    Specify conditionA and conditionB as the same 'ConditionName' or the
+%     same { 'Condition1' 'Condition2' ... } for an average of multiple
+%     conditions
+%    Specify localSpectraA and localSpectraB as their respective local 
+%     spectra .mat files
+%
+%   To compare 2 conditions or 2 condition averages within separate local
+%   spectra .mat files:
+%    Specify conditionA and conditionB as their respective 'ConditionName'
+%     or as their respective { 'ConditionName1' 'ConditionName2' ... } for
+%     averages of multiple conditions
+%    Specify localSpectraA and localSpectraB as their respective local 
+%     spectra .mat files
 %
 % .. . .  .   .     .        .             .                     .                                  .
 %
@@ -72,11 +128,12 @@ function Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, downsa
 %
 % !!! Requires !!!
 %
+%   plotTimeFrequency.m by Rohan King (2023) available at
+%    https://github.com/neuroro/EEG/plotTimeFrequency.m
 %   descriptiveStatsitics.m by Rohan King (2023) available at
 %    https://github.com/neuroro/EEG/descriptiveStatsitics.m
-%   montecluster.m and grow.m available from the author
-%    (work in progress)
-%   EEGLAB
+%   montecluster.m, distanceFunction.m, & grow.m available from the author
+%   EEGLAB for downsampling with anti-aliasing
 %
 % • Author •
 % -------------------------------------------------------------------------
@@ -102,11 +159,55 @@ function Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, downsa
 %  https://github.com/neuroro/EEG/spectralClusters.m
 
 
+% • TO IMPLEMENT IN FUTURE •
+% -------------------------------------------------------------------------
+% Variable input arguments
+% PLOT DISTRIBUTIONS AS VIOLINS
+% EXPORT DATA
+
+
+%% Configuration (optional)
+% -------------------------------------------------------------------------
+
+% To compare 2 conditions or 2 condition averages within the same local
+% spectra .mat file:
+%  Specify condition1 and condition2 as their respective 'ConditionName' or
+%   as { 'Name1' 'Name2' ... } for the average of multiple conditions
+%  Specify localSpectra1 and localSpectra2 as the same local spectra file
+
+% To compare 2 groups in separate local spectra .mat files, within the same
+% condition or condition average:
+%  Specify condition1 and condition2 as the same 'ConditionName' or
+%   { 'Name1' 'Name2' ... } for the average of multiple conditions
+%  Specify localSpectra1 and localSpectra2 as their respective local 
+%   spectra .mat files
+
+% To compare 2 conditions or 2 condition averages within separate local
+% spectra .mat files:
+%  Specify condition1 and condition2 as their respective 'ConditionName' or
+%   as { 'Name1' 'Name2' ... } for the average of multiple conditions
+%  Specify localSpectra1 and localSpectra2 as their respective local 
+%   spectra .mat files
+
+% Condition labels
+% as 'ConditionName' or { 'Name1' 'Name2' ... } for the average of multiple
+condition1 = 'ConditionName1'; #
+condition2 = 'ConditionName2'; #
+
+% Local spectra file names
+% with or without the .mat file extension
+localSpectra1 = 'TimeFrequencyBilateralParietalCluster.mat'; #
+localSpectra2 = 'TimeFrequencyBilateralParietalCluster.mat'; #
+
+
 %% Startup
 % -------------------------------------------------------------------------
 
-% Initialise EEGLAB
-eegStartup
+% Initialise EEGLAB if needed
+if ~isempty( downsampling ) && isnumeric( downsampling ) && ...
+   downsampling > 0 && exist( 'eeglab', 'file' )
+    eegStartup
+end
 
 % Introduction
 disp( ' ' )
@@ -121,48 +222,56 @@ disp( 'equivalent (King, 2023) available at https://github.com/neuroro/EEG/'  )
 disp( ' ' )
 
 
-%% Configuration
+%% Inputs
 % -------------------------------------------------------------------------
-
-% Local spectra mat files
-LOCALSPECTRA1 = 'TimeFrequencyJuicePBiCluster.mat';
-LOCALSPECTRA2 = 'TimeFrequencyPlaceboPBiCluster.mat';
 
 % Conditions
-CONDITION1    = 'Acute Juice';
-CONDITION2    = 'Acute Placebo';
+if exist( 'conditionA', 'var' )
+    condition1 = conditionA;
+end
+if exist( 'conditionB', 'var' )
+    condition2 = conditionB;
+end
 
-% Metrics and trial event-locked windows
-METRICS       = { 'SpectralPower' 'PhaseCoherence' };
-WINDOWS       = { 'Stimulus'      'Response'       };
+% Local spectra .mat files
+if exist( 'localSpectraA', 'var' )
+    localSpectra1 = localSpectraA;
+end
+if exist( 'localSpectraB', 'var' )
+    localSpectra2 = localSpectraB;
+end
+if ~contains( localSpectra1, '.mat' )
+    localSpectra1 = [ localSpectra1 '.mat' ];
+end
+if ~contains( localSpectra2, '.mat' )
+    localSpectra2 = [ localSpectra2 '.mat' ];
+end
 
 % Number of permutations
-PERMUTATIONS  = 1e0;
-
-
-%% Default inputs
-% -------------------------------------------------------------------------
+if ~exist( 'nPermutations', 'var' )
+    nPermutations = 1e4;
+end
 
 % Cluster p-value threshold
-if ~nargin
+if ~exist( 'pThreshold', 'var' )
     pThreshold = 0.025;
 end
 
 % Frequency band
-if ~exist( 'frequencyBand', 'var' ) || nargin < 2
-    frequencyBand = 'Theta+';
+if ~exist( 'frequencyBand', 'var' )
+    frequencyBand = [];
 end
 if isstring( frequencyBand )
     frequencyBand = char( frequencyBand );
 end
 
 % Time limit
-if ~exist( 'timeLimits', 'var' ) || ( isscalar( timeLimits ) && ~timeLimits )
-    timeLimits = 600;
+if ~exist( 'timeLimits', 'var' )
+    timeLimits = 1000;
 end
 
 % Downsampling to speed up computation
-if ~exist( 'downsampling', 'var' ) || nargin < 4
+if ~exist( 'downsampling', 'var' )
     downsampling = 250;
 end
 
@@ -174,42 +283,71 @@ clusterRunTime( 'Loading' )
 disp( ' ' )
 
 % Local spectra mat file paths
-spectraPath1    = which( LOCALSPECTRA1 );
-spectraPath2    = which( LOCALSPECTRA2 );
+spectraPath1 = which( localSpectra1 );
+spectraPath2 = which( localSpectra2 );
 
 % Load local spectra
-Data1           = load( spectraPath1 );
-Data2           = load( spectraPath2 );
+Data1 = load( spectraPath1 );
+if matches( localSpectra1, localSpectra2 )
+    Data2 = Data1;
+else
+    Data2 = load( spectraPath2 );
+end
 
-ConditionField1 = strrep( CONDITION1, ' ', '' );
-ConditionField2 = strrep( CONDITION2, ' ', '' );
-iCondition1     = find( matches( Data1.(WINDOWS{1}).Conditions, ConditionField1 ), 1 );
-iCondition2     = find( matches( Data1.(WINDOWS{1}).Conditions, ConditionField2 ), 1 );
-nCentres        = length( fieldnames( Data1 ) );
-if length( fieldnames( Data1 ) ) ~= length( fieldnames( Data2 ) )
-    error( 'Number of event-centred windows mismatch between data 1 and data 2' )
+% Event-locked windowings
+eventCentres = fieldnames( Data1 );
+nCentres     = length( eventCentres );
+if nCentres ~= length( fieldnames( Data2 ) )
+    error( 'Number of event-locked windowings mismatch between local spectra files' )
+end
+
+% Conditions
+ConditionField1 = strrep( condition1, ' ', '' );
+ConditionField2 = strrep( condition2, ' ', '' );
+iCondition1     = matches( Data1.(eventCentres{1}).Conditions, ConditionField1 );
+iCondition2     = matches( Data1.(eventCentres{1}).Conditions, ConditionField2 );
+nConditions1    = sum( iCondition1 );
+nConditions2    = sum( iCondition2 );
+
+% Spectral metrics
+spectralMetrics = fieldnames( Data1.(eventCentres){1} );
+if length( spectralMetrics ) ~= length( fieldnames( Data2.(eventCentres){1} ) )
+    error( 'Spectral metrics mismatch between local spectra files' )
 end
 
 % Frequencies in the decomposition
-frequencies     = Data1.(WINDOWS{1}).Frequencies;
+frequencies = Data1.(eventCentres{1}).Frequencies;
 
 % Sanity check
-frequencySanity = Data1.(WINDOWS{1}).Frequencies - Data2.(WINDOWS{1}).Frequencies;
+frequencySanity = Data1.(eventCentres{1}).Frequencies - Data2.(eventCentres{1}).Frequencies;
 sanityEdge      = 1e-14;
 frequencyInsane = any( frequencySanity > sanityEdge );
 if frequencyInsane
-    error( 'Frequencies mismatch between data 1 and data 2' )
+    error( 'Frequencies mismatch between local spectra files' )
+end
+
+% Times in the decomposition
+for w = 1:nCentres
+    times.(eventCentres{w}) = Data1.(eventCentres{w}).Times;
+end
+
+% Sanity check
+timeSanity = Data1.(eventCentres{1}).Times - Data2.(eventCentres{1}).Times;
+sanityEdge = 1e-14;
+timeInsane = any( timeSanity > sanityEdge );
+if timeInsane
+    error( 'Times mismatch between local spectra files' )
 end
 
 % Sampling rate
-if  isfield( Data1.(WINDOWS{1}), 'SamplingRate' ) && ...
-    isfield( Data2.(WINDOWS{1}), 'SamplingRate' ) && ...
-   ~isempty( Data1.(WINDOWS{1}).SamplingRate )    && ...
-   ~isempty( Data2.(WINDOWS{1}).SamplingRate )
-    if Data1.(WINDOWS{1}).SamplingRate == Data2.(WINDOWS{1}).SamplingRate
-        samplingRate = Data1.(WINDOWS{1}).SamplingRate;
+if  isfield( Data1.(eventCentres{1}), 'SamplingRate' ) && ...
+    isfield( Data2.(eventCentres{1}), 'SamplingRate' ) && ...
+   ~isempty( Data1.(eventCentres{1}).SamplingRate )    && ...
+   ~isempty( Data2.(eventCentres{1}).SamplingRate )
+    if Data1.(eventCentres{1}).SamplingRate == Data2.(eventCentres{1}).SamplingRate
+        samplingRate = Data1.(eventCentres{1}).SamplingRate;
     else
-        error( 'Sampling rate mismatch between data 1 and data 2' )
+        error( 'Sampling rate mismatch between local spectra files' )
     end
 else
     samplingRate = 1000;
@@ -237,8 +375,9 @@ iFrequencyBand  = iBand1:iBand2;
 frequenciesBand = frequencies(iFrequencyBand);
 nFrequencies    = length( frequenciesBand );
 
-% Time limit scalar or vector of time limits
-if isscalar( timeLimits ) || isvector( timeLimits )
+% Time limit non-zero scalar or vector of time limits
+if ( isscalar( timeLimits ) && timeLimits ~= 0 ) || ...
+   ( isvector( timeLimits ) && ~isempty( timeLimits ) )
     
     timeLimit = zeros( nCentres, 2 );
 
@@ -246,23 +385,23 @@ if isscalar( timeLimits ) || isvector( timeLimits )
         earliestTime = timeLimits(1);
         maximumTime  = timeLimits(2);
     catch
-        earliestTime = max( 0, 90 - timeLimits/40 );
+        earliestTime = 0; % Alternative: max( 0, 90 - timeLimits/40 );
         maximumTime  = timeLimits;
     end
 
     for w = 1:nCentres
 
         % Stimulus-related window
-        if contains( WINDOWS{w}, 'Stim', 'IgnoreCase', true )
+        if contains( eventCentres{w}, 'Stim', 'IgnoreCase', true )
             timeLimit(w,:) = [ earliestTime maximumTime ];
 
         % Initiation-related window
-        elseif contains( WINDOWS{w}, 'Init', 'IgnoreCase', true )
-            timeLimit(w,:) = [ -maximumTime*3/4 maximumTime*3/4 ];
+        elseif contains( eventCentres{w}, 'Init', 'IgnoreCase', true )
+            timeLimit(w,:) = [ -maximumTime/2 maximumTime/2 ];
 
         % Response-related window
-        elseif contains( WINDOWS{w}, 'Resp', 'IgnoreCase', true )
-            timeLimit(w,:) = [ -maximumTime*3/4 maximumTime*3/4 ];
+        elseif contains( eventCentres{w}, 'Resp', 'IgnoreCase', true )
+            timeLimit(w,:) = [ -maximumTime/2 maximumTime/2 ];
 
         % General event-related window
         else
@@ -276,6 +415,14 @@ if isscalar( timeLimits ) || isvector( timeLimits )
 elseif size( timeLimits, 1 ) == nCentres && size( timeLimits, 1 ) == 2
     timeLimit = timeLimits;
 
+% Whole window
+elseif ( isscalar( timeLimits ) && timeLimits == 0 ) || isempty( timeLimits )
+    for w = 1:nCentres
+        earliestTime   = times.(eventCentres{w})(1);
+        maximumTime    = times.(eventCentres{w})(end);
+        timeLimit(w,:) = [ earliestTime maximumTime ];                      %#ok
+    end
+
 % Error
 else
     errorText = [ 'Input time limits (in ms) to test differences within as a ' ...
@@ -284,8 +431,9 @@ else
                   '[t1 t2] vector of stimulus-related time limits with '       ...
                   'other time limits dervied in proportion to t2; or a '       ...
                   'w x t matrix of time limits (t) for each event-related '    ...
-                  'window (w), semicolon-separated in alphbetical order, '     ...
-                  'for example [t1Resp t2Resp; t1Stim t2Stim]'                 ];
+                  'window (w), semicolon-separated in alphabetical order, '    ...
+                  'for example [t1Resp t2Resp; t1Stim t2Stim]; or 0 or []'     ...
+                  'for the whole window' ];
     error( errorText )
 
 end
@@ -302,8 +450,8 @@ for iMetric = 1:2
     for iEventWindow = 1:2
 
         % Curent metric and event-locked window
-        metric      = METRICS{iMetric};
-        eventWindow = WINDOWS{iEventWindow};
+        metric      = spectralMetrics{iMetric};
+        eventWindow = eventCentres{iEventWindow};
 
 
         %% Time limits
@@ -334,8 +482,17 @@ for iMetric = 1:2
         % -----------------------------------------------------------------
 
         % Spectra for all people
-        oscillations1 = squeeze( Data1.(eventWindow).(metric)(:,iCondition1,iFrequencyBand,iTimesLimited) );
-        oscillations2 = squeeze( Data2.(eventWindow).(metric)(:,iCondition2,iFrequencyBand,iTimesLimited) );
+        % Participants x Conditions x Frequencies x Times
+        oscillations1 = Data1.(eventWindow).(metric)(:,iCondition1,iFrequencyBand,iTimesLimited);
+        oscillations2 = Data2.(eventWindow).(metric)(:,iCondition2,iFrequencyBand,iTimesLimited);
+        if nConditions1 > 1
+            oscillations1 = mean( oscillations1, 2, "omitnan" );
+        end
+        if nConditions2 > 1
+            oscillations2 = mean( oscillations2, 2, "omitnan" );
+        end
+        oscillations1 = squeeze( oscillations1 );
+        oscillations2 = squeeze( oscillations2 );
 
         % Spectra differences for all people
         oscillationsD = oscillations1 - oscillations2;
@@ -347,9 +504,17 @@ for iMetric = 1:2
             grandAverage1 = grandAverage1(iFrequencyBand,iTimesLimited);
             grandAverage2 = grandAverage2(iFrequencyBand,iTimesLimited);
         else
-            grandAverage1 = squeeze( grandAverage1(iCondition1,iFrequencyBand,iTimesLimited) );
-            grandAverage2 = squeeze( grandAverage2(iCondition2,iFrequencyBand,iTimesLimited) );
+            grandAverage1 = grandAverage1(iCondition1,iFrequencyBand,iTimesLimited);
+            grandAverage2 = grandAverage2(iCondition2,iFrequencyBand,iTimesLimited);
+            if nConditions1 > 1
+                grandAverage1 = mean( grandAverage1, 1, "omitnan" );
+            end
+            if nConditions2 > 1
+                grandAverage2 = mean( grandAverage2, 1, "omitnan" );
+            end
         end
+        grandAverage1 = squeeze( grandAverage1 );
+        grandAverage2 = squeeze( grandAverage2 );
 
 
         %% Spectral difference t-statistics
@@ -374,97 +539,145 @@ for iMetric = 1:2
 
         %% Plot data
 
+        % Colour limits
+        minimumGA1   = min( grandAverage1, [], 'all', 'omitnan' );
+        minimumGA2   = min( grandAverage2, [], 'all', 'omitnan' );
+        minColour    = min( minimumGA1, minimumGA2 );
+        maximumGA1   = max( grandAverage1, [], 'all', 'omitnan' );
+        maximumGA2   = max( grandAverage2, [], 'all', 'omitnan' );
+        maxColour    = max( maximumGA1, maximumGA2 );
+        colourLimits = [ minColour maxColour ];
+
         % Plot grand average 1
         plotTimeFrequency( grandAverage1, frequenciesBand, timesLimited )
-        figName = [ eventWindow '-Related ' bandName ' ' metric ' Under ' CONDITION1 ];
-        title( figName )
-        colormap( jetzeroed() )
-        savefig( figName )
+        figNameGA1 = [ eventWindow '-Related ' bandName ' ' metric ' for ' condition1 ];
+        title( figNameGA1 )
+        colormap( jetzeroed( colourLimits ) )
+        savefig( [ figNameGA1 '.fig' ] )
 
         % Plot grand average 2
         plotTimeFrequency( grandAverage2, frequenciesBand, timesLimited )
-        figName = [ eventWindow '-Related ' bandName ' ' metric ' Under ' CONDITION2 ];
-        title( figName )
-        colormap( jetzeroed() )
-        savefig( figName )
+        figNameGA2 = [ eventWindow '-Related ' bandName ' ' metric ' for ' condition2 ];
+        title( figNameGA2 )
+        colormap( jetzeroed( colourLimits ) )
+        savefig( [ figNameGA2 '.fig' ] )
 
         % Plot masked differences
         maskedD = squeeze( meanDifferences ) .* mask;
         plotTimeFrequency( maskedD, frequenciesBand, timesLimited )
-        figName = [ eventWindow '-Related ' bandName ' ' metric ' ' CONDITION1 ' - ' CONDITION2 ' Differences' ];
-        title( figName )
+        figNameD = [ eventWindow '-Related ' bandName ' ' metric ' for ' condition1 ' - ' condition2 ];
+        title( figNameD )
         colormap( jetzeroed() )
-        savefig( figName )
+        savefig( [ figNameD '.fig' ] )
 
         % Plot masked t-map
         maskedT = tStats .* mask;
         plotTimeFrequency( maskedT, frequenciesBand, timesLimited )
-        figName = [ 'T-Map of ' eventWindow '-Related ' bandName ' ' metric ' ' CONDITION1 ' - ' CONDITION2 ' Differences' ];
-        title( figName )
+        figNameT = [ eventWindow '-Related ' bandName ' ' metric ' t of ' condition1 ' vs ' condition2 ];
+        title( figNameT )
         colormap( jetzeroed() )
-        savefig( figName )
-
-        % !!! PLOT DISTRIBUTIONS AS VIOLINS !!!
-
-        % !!! EXPORT DATA TO MODEL IN R & PLOT WITH GGPLOT2 !!!
+        savefig( [ figNameT '.fig' ] )
 
 
         %% Cluster permutation testing
         % -----------------------------------------------------------------
 
-        % Downsample using pop_resample for anti-aliasing
+        % Downsampling
         if ~isempty( downsampling ) && isnumeric( downsampling ) && downsampling ~= samplingRate
-            spectraD    = [];
-            for p = 1:N
-                singleSpectra   = squeeze( oscillationsD(p,:,:) );
-                EEG             = eeg_emptyset();
-                EEG.data        = singleSpectra;
-                EEG.times       = timesLimited;
-                EEG.nbchan      = nFrequencies;
-                EEG.trials      = 1;
-                EEG.pnts        = nTimesLimited;
-                EEG.xmin        = 0;
-                EEG.xmax        = ( nTimesLimited - 1 ) / samplingRate;
-                EEG.srate       = samplingRate;
-                EEG             = eeg_checkset( EEG );
-                EEG             = pop_resample( EEG, downsampling );
-                spectraD(p,:,:) = EEG.data;                                 %#ok
-            end
-            testedTimes = EEG.times;
 
+            % Downsample with anti-aliasing using pop_resample from EEGLAB
+            if exist( 'eeglab', 'file' )
+                spectraD    = [];
+                for p = 1:N
+                    singleSpectra   = squeeze( oscillationsD(p,:,:) );
+                    EEG             = eeg_emptyset();
+                    EEG.data        = singleSpectra;
+                    EEG.times       = timesLimited;
+                    EEG.nbchan      = nFrequencies;
+                    EEG.trials      = 1;
+                    EEG.pnts        = nTimesLimited;
+                    EEG.xmin        = 0;
+                    EEG.xmax        = ( nTimesLimited - 1 ) / samplingRate;
+                    EEG.srate       = samplingRate;
+                    EEG             = eeg_checkset( EEG );
+                    EEG             = pop_resample( EEG, downsampling );
+                    spectraD(p,:,:) = EEG.data;                                 %#ok
+                end
+                testedTimes = EEG.times;
+                timeShift   = samplingRate / downsampling;
+
+            % Downsample without anti-aliasing
+            else
+                timeShift   = samplingRate / downsampling;
+                dt          = round( timeShift );
+                spectraD    = oscillationsD(:,:,1:dt:end);
+                testedTimes = timesLimited(1:dt:end);
+
+            end
+            
         % No downsampling
         else
             spectraD    = oscillationsD;
             testedTimes = timesLimited;
+            timeShift   = 0;
 
         end
 
         % Plot tested differences
-        testedMeanD     = squeeze( mean( spectraD, 1, 'omitnan' ) );
+        testedMeanD = squeeze( mean( spectraD, 1, 'omitnan' ) );
         plotTimeFrequency( testedMeanD, frequenciesBand, testedTimes )
-        figName = [ eventWindow '-Related ' bandName ' ' metric ' ' CONDITION1 ' - ' CONDITION2 ' Tested Differences' ];
+        figName = [ eventWindow '-Related ' bandName ' ' metric ' ' ...
+                    condition1 ' - ' condition2 ' Tested Differences' ];
         title( figName )
         colormap( jetzeroed() )
-        savefig( figName )
+        savefig( [ figName '.fig' ] )
 
-        % Distance between each time-frequency point for clustering
-        clusterRunTime( 'Distance function' )
-        global distances
-        distances       = spectralDistances( spectraD );
+        % % Distance between each time-frequency point for clustering
+        % clusterRunTime( 'Distance function' )
+        % global distances
+        % distances = spectralDistances( spectraD );
 
         clusterRunTime( 'Cluster permutation test' )
 
         % Collapse frequencies and times into one dimension for testing
-        nTimes          = size( spectraD, 3 );
-        spectraD        = reshape( spectraD, N, nFrequencies * nTimes );
-        spectraD        = spectraD';
-        
+        nTimes   = size( spectraD, 3 );
+        spectraD = reshape( spectraD, N, nFrequencies * nTimes );
+        spectraD = spectraD';
+
         % Permutation test
-        [ p, s ]        = montecluster( spectraD, PERMUTATIONS, pThreshold, 3, frequencies, [ nFrequencies nTimes ], 1, 1, 1 );
+        [ p, s ] = montecluster( spectraD, nPermutations, 'tf', pThreshold, ...
+                                 frequencies, [ nFrequencies nTimes ], 1, timeShift, 1 );
 
         % Store in struct
-        Stats.(eventWindow).(metric).p = p;
-        Stats.(eventWindow).(metric).s = s;
+        if p(1) ~= 0
+            Stats.(eventWindow).(metric).p     = p(1);
+            Stats.(eventWindow).(metric).Sigma = s(1);
+        else
+            Stats.(eventWindow).(metric).p     = [ '< ' num2str( 1/nPermutations ) ];
+            Stats.(eventWindow).(metric).Sigma = [ '> ' num2str( abs( norminv( 1/nPermutations ) ) ) ];
+        end
+        if p(1) == p(2) && ~isnan( p(1) )
+            direction = 'Positive difference';
+        elseif p(1) == p(3) && ~isnan( p(1) )
+            direction = 'Negative difference';
+        elseif isnan( p(1) )
+            direction = 'No cluster';
+        end
+        Stats.(eventWindow).(metric).Direction = direction;
+        if p(2) ~= 0
+            Stats.(eventWindow).(metric).Positive.p     = p(2);
+            Stats.(eventWindow).(metric).Positive.Sigma = s(2);
+        else
+            Stats.(eventWindow).(metric).Positive.p     = [ '< ' num2str( 1/nPermutations ) ];
+            Stats.(eventWindow).(metric).Positive.Sigma = [ '> ' num2str( abs( norminv( 1/nPermutations ) ) ) ];
+        end
+        if p(3) ~= 0
+            Stats.(eventWindow).(metric).Negative.p     = p(3);
+            Stats.(eventWindow).(metric).Negative.Sigma = s(3);
+        else
+            Stats.(eventWindow).(metric).Negative.p     = [ '< ' num2str( 1/nPermutations ) ];
+            Stats.(eventWindow).(metric).Negative.Sigma = [ '> ' num2str( abs( norminv( 1/nPermutations ) ) ) ];
+        end
 
 
         %% Descriptive statistics
@@ -476,13 +689,13 @@ for iMetric = 1:2
 
         % Extrema distributions
         % Overall maximum and direction
-        if ~isnan( p(2) ) && ( p(2) < p(3) || isnan( p(3) ) )
+        if p(1) == p(2) && ~isnan( p(1) )                                   % ~isnan( p(2) ) && ( p(2) < p(3) || isnan( p(3) ) )
             data1Values = grandAverage1 .* maskPositive;
             data2Values = grandAverage2 .* maskPositive;
-        elseif ~isnan( p(3) ) && ( p(3) < p(2) || ~isnan( p(2) ) )
+        elseif p(1) == p(3) && ~isnan( p(1) )                               % ~isnan( p(3) ) && ( p(3) < p(2) || ~isnan( p(2) ) )
             data1Values = grandAverage1 .* maskNegative;
             data2Values = grandAverage2 .* maskNegative;
-        elseif isnan( p(2) ) && isnan( p(3) )
+        elseif isnan( p(1) )                                                % ( isnan( p(2) ) && isnan( p(3) ) )
             data1Values = grandAverage1 .* NaN;
             data2Values = grandAverage2 .* NaN;
         else
@@ -511,15 +724,24 @@ end
 %
 function eegStartup
 
-% Check if EEGLAB is being used in the Base Workspace
+% Check if EEGLAB is being used
+eeglabVariableUsage   = ( exist( 'EEG',    'var' ) && ~isempty( EEG )    && ~isempty( EEG.data ) )       || ...
+                        ( exist( 'ALLEEG', 'var' ) && ~isempty( ALLEEG ) && ~isempty( ALLEEG(1).data ) ) || ...
+                        ( exist( 'STUDY',  'var' ) && ~isempty( STUDY ) );
+erplabVariableUsage   =   exist( 'ALLERP', 'var' ) && ~isempty( ALLERP );
 existenceCommand      = "exist( 'globalvars', 'var' ) || exist( 'tmpEEG', 'var' )";
 baseVariableExistence = evalin( "base", existenceCommand );
 
 % Initialise EEGLAB
 eeglab nogui
 
-% Clear global variables
-clearvars -global ALLCOM ALLEEG CURRENTSET CURRENTSTUDY EEG LASTCOM PLUGINLIST STUDY ALLERP
+% Clear global variables unless they are being used
+if ~eeglabVariableUsage
+    clearvars -global ALLCOM ALLEEG CURRENTSET CURRENTSTUDY EEG LASTCOM PLUGINLIST STUDY
+end
+if ~erplabVariableUsage
+    clearvars -global ALLERP
+end
 
 % Clear variables set in the Base Workspace unless they are being used
 if ~baseVariableExistence
@@ -531,60 +753,6 @@ home
 
 
 % _________________________________________________________________________
-end
-
-
-
-%% 
-% •.° Spectra Distance Function °.•
-% _________________________________________________________________________
-%
-function distances = spectralDistances( spectra )
-
-% Dimensions
-nFrequencies = size( spectra, 2 );
-nTimes       = size( spectra, 3 );
-nFxT         = nFrequencies * nTimes;
-
-% Pre-allocate
-distances = zeros( nFxT );
-
-% Cluster adjacency threshold
-adjacency = ceil( sqrt( 2 ) * 10 ) / 10;
-
-% Build FxT indices
-indices = cell( 1, nFxT );
-counter = 0;
-for iF = 1:nFrequencies
-    for iT = 1:nTimes
-        counter = counter + 1;
-
-        indices{counter} = [iF iT];
-
-    end
-end
-
-% Frequency x time distances
-for i = 1:nFxT
-    for j = i+1:nFxT
-
-        FxTi = indices{i};
-        FxTj = indices{j};
-
-        % Pythagorean distance
-        distances(i,j) = sqrt( (FxTi(1) - FxTj(1))^2 ...
-                             + (FxTi(2) - FxTj(2))^2 );
-
-        distances(j,i) = distances(i,j);
-
-    end
-end
-
-% Normalisation
-distances = distances ./ adjacency;
-
-
-% ______________________________________________________________________
 end
 
 
@@ -695,9 +863,65 @@ if exist( 'message', 'var' )
 else
     disp( theTimeIs )
 end
+disp( ' ' )
 
 
 % _________________________________________________________________________
 end
+
+
+
+%% 
+% % •.° Spectra Distance Function °.•
+% % _________________________________________________________________________
+% %
+% function distances = spectralDistances( spectra )
+% 
+% % Dimensions
+% nFrequencies = size( spectra, 2 );
+% nTimes       = size( spectra, 3 );
+% nFxT         = nFrequencies * nTimes;
+% 
+% % Pre-allocate
+% distances = zeros( nFxT );
+% 
+% % Cluster adjacency threshold
+% adjacency = ceil( sqrt( 2 ) * 10 ) / 10;
+% 
+% % Build FxT indices
+% indices = cell( 1, nFxT );
+% counter = 0;
+% for iT = 1:nTimes
+%     for iF = 1:nFrequencies
+%         counter = counter + 1;
+% 
+%         indices{counter} = [iF iT];
+% 
+%     end
+% end
+% 
+% % Frequency x time distances
+% for i = 1:nFxT
+%     for j = i+1:nFxT
+% 
+%         Fi = indices{i}(1);
+%         Fj = indices{j}(1);
+%         Ti = indices{i}(2);
+%         Tj = indices{j}(2);
+% 
+%         % Euclidean distance
+%         distances(i,j) = sqrt( ( Fi - Fj )^2 + ( Ti - Tj )^2 );
+% 
+%         distances(j,i) = distances(i,j);
+% 
+%     end
+% end
+% 
+% % Normalisation
+% distances = distances ./ adjacency;
+% 
+% 
+% % ______________________________________________________________________
+% end
 
 
