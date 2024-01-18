@@ -22,7 +22,10 @@ Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, ...
 % arguments of the function or edit the Configuration section of the
 % function code (found below this help text)
 % 
-% >> spectralClusters( pThreshold, frequencyBand, timeLimits, downsampling )
+% >> spectralClusters( pThreshold, frequencyBand, timeLimits, ...
+%                      nPermutations, downsampling,           ...
+%                      conditionA, conditionB,                ...
+%                      localSpectraA, localSpectraB           )
 % 
 % For example:
 % >> spectralClusters
@@ -130,10 +133,16 @@ Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, ...
 %
 %   plotTimeFrequency.m by Rohan King (2023) available at
 %    https://github.com/neuroro/EEG/plotTimeFrequency.m
+%
 %   descriptiveStatsitics.m by Rohan King (2023) available at
 %    https://github.com/neuroro/EEG/descriptiveStatsitics.m
+%
 %   montecluster.m, distanceFunction.m, & grow.m available from the author
+%
 %   EEGLAB for downsampling with anti-aliasing
+%
+%   raincloud_plot.m by Allen et al. (2021) available at
+%    https://github.com/RainCloudPlots/RainCloudPlots/blob/master/tutorial_matlab/raincloud_plot.m
 %
 % • Author •
 % -------------------------------------------------------------------------
@@ -162,8 +171,7 @@ Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, ...
 % • TO IMPLEMENT IN FUTURE •
 % -------------------------------------------------------------------------
 % Variable input arguments
-% PLOT DISTRIBUTIONS AS VIOLINS
-% EXPORT DATA
+% Export data for statistical analysis in other software
 
 
 %% Configuration (optional)
@@ -232,6 +240,12 @@ end
 if exist( 'conditionB', 'var' )
     condition2 = conditionB;
 end
+if iscell( condition1 )
+    condition1Name = char( join( condition1 ) );
+end
+if iscell( condition2 )
+    condition2Name = char( join( condition2 ) );
+end
 
 % Local spectra .mat files
 if exist( 'localSpectraA', 'var' )
@@ -245,6 +259,23 @@ if ~contains( localSpectra1, '.mat' )
 end
 if ~contains( localSpectra2, '.mat' )
     localSpectra2 = [ localSpectra2 '.mat' ];
+end
+spectra1Name = extractBefore( localSpectra1, '.mat' );
+spectra2Name = extractBefore( localSpectra2, '.mat' );
+
+% Comparison
+if matches( condition1Name, condition2Name )
+    comparison1 = spectra1Name;
+    comparison2 = spectra2Name;
+    comparison3 = [ 'for ' condition1Name ];
+elseif matches( spectra1Name, spectra2Name )
+    comparison1 = condition1Name;
+    comparison2 = condition2Name;
+    comparison3 = [ 'for ' spectra1Name ];
+else
+    comparison1 = [ condition1Name ' ' spectra1Name ];
+    comparison2 = [ condition2Name ' ' spectra2Name ];
+    comparison3 = '';
 end
 
 % Number of permutations
@@ -310,8 +341,11 @@ nConditions1    = sum( iCondition1 );
 nConditions2    = sum( iCondition2 );
 
 % Spectral metrics
-spectralMetrics = fieldnames( Data1.(eventCentres){1} );
-if length( spectralMetrics ) ~= length( fieldnames( Data2.(eventCentres){1} ) )
+spectralFields1 = fieldnames( Data1.(eventCentres{1}).GrandAverage );
+spectralFields2 = fieldnames( Data2.(eventCentres{1}).GrandAverage );
+metricFields    = ~contains( spectralFields1, { 'Unit' 'Dimension' } );
+spectralMetrics = spectralFields1(metricFields);
+if length( spectralMetrics ) ~= length( spectralFields2(~contains( spectralFields2, { 'Unit' 'Dimension' } )) )
     error( 'Spectral metrics mismatch between local spectra files' )
 end
 
@@ -537,7 +571,12 @@ for iMetric = 1:2
         mask            = or( maskPositive, maskNegative );
 
 
-        %% Plot data
+        %% Plot spectral data
+
+        % Title addendum
+        if ~isempty( comparison3 )
+            comparison3Title = [ newline comparison3 ];
+        end
 
         % Colour limits
         minimumGA1   = min( grandAverage1, [], 'all', 'omitnan' );
@@ -550,33 +589,37 @@ for iMetric = 1:2
 
         % Plot grand average 1
         plotTimeFrequency( grandAverage1, frequenciesBand, timesLimited )
-        figNameGA1 = [ eventWindow '-Related ' bandName ' ' metric ' for ' condition1 ];
+        figNameGA1  = [ eventWindow '-Related ' bandName ' ' metric newline 'of ' comparison1 comparison3Title ];
         title( figNameGA1 )
         colormap( jetzeroed( colourLimits ) )
-        savefig( [ figNameGA1 '.fig' ] )
+        fileNameGA1 = [ eventWindow '-Related ' bandName ' ' metric ' of ' comparison1 comparison3 '.fig' ];
+        savefig( fileNameGA1 )
 
         % Plot grand average 2
         plotTimeFrequency( grandAverage2, frequenciesBand, timesLimited )
-        figNameGA2 = [ eventWindow '-Related ' bandName ' ' metric ' for ' condition2 ];
+        figNameGA2  = [ eventWindow '-Related ' bandName ' ' metric newline 'of ' comparison2 comparison3Title ];
         title( figNameGA2 )
         colormap( jetzeroed( colourLimits ) )
-        savefig( [ figNameGA2 '.fig' ] )
+        fileNameGA2 = [ eventWindow '-Related ' bandName ' ' metric ' of ' comparison2 comparison3 '.fig' ];
+        savefig( fileNameGA2 )
 
         % Plot masked differences
         maskedD = squeeze( meanDifferences ) .* mask;
         plotTimeFrequency( maskedD, frequenciesBand, timesLimited )
-        figNameD = [ eventWindow '-Related ' bandName ' ' metric ' for ' condition1 ' - ' condition2 ];
+        figNameD = [ eventWindow '-Related ' bandName ' ' metric newline 'of ' comparison1 ' - ' comparison2 comparison3Title ];
         title( figNameD )
         colormap( jetzeroed() )
-        savefig( [ figNameD '.fig' ] )
+        fileNameD = [ eventWindow '-Related ' bandName ' ' metric ' of ' comparison1 ' - ' comparison2 comparison3 '.fig' ];
+        savefig( fileNameD )
 
         % Plot masked t-map
         maskedT = tStats .* mask;
         plotTimeFrequency( maskedT, frequenciesBand, timesLimited )
-        figNameT = [ eventWindow '-Related ' bandName ' ' metric ' t of ' condition1 ' vs ' condition2 ];
+        figNameT = [ eventWindow '-Related ' bandName ' ' metric ' t-Statistics' newline 'of ' comparison1 ' vs ' comparison2 comparison3Title ];
         title( figNameT )
         colormap( jetzeroed() )
-        savefig( [ figNameT '.fig' ] )
+        fileNameT = [ eventWindow '-Related ' bandName ' ' metric ' t-Statistics of ' comparison1 ' vs ' comparison2 comparison3 '.fig' ];
+        savefig( fileNameT )
 
 
         %% Cluster permutation testing
@@ -626,11 +669,15 @@ for iMetric = 1:2
         % Plot tested differences
         testedMeanD = squeeze( mean( spectraD, 1, 'omitnan' ) );
         plotTimeFrequency( testedMeanD, frequenciesBand, testedTimes )
-        figName = [ eventWindow '-Related ' bandName ' ' metric ' ' ...
-                    condition1 ' - ' condition2 ' Tested Differences' ];
+        figName     = [ eventWindow '-Related ' bandName ' ' metric newline  ...
+                        'of ' comparison1 ' - ' comparison2 comparison3Title ...
+                        newline 'Tested Differences' ];
         title( figName )
         colormap( jetzeroed() )
-        savefig( [ figName '.fig' ] )
+        figFileName = [ eventWindow '-Related ' bandName ' ' metric      ...
+                        ' of ' comparison1 ' - ' comparison2 comparison3 ...
+                        ' Tested Differences.fig' ];
+        savefig( figFileName )
 
         % % Distance between each time-frequency point for clustering
         % clusterRunTime( 'Distance function' )
@@ -683,30 +730,85 @@ for iMetric = 1:2
         %% Descriptive statistics
         % -----------------------------------------------------------------
 
-        % Tested distributions
-        Stats.(eventWindow).(metric).Stats.(ConditionField1) = descriptiveStatistics( oscillations1(:) );
-        Stats.(eventWindow).(metric).Stats.(ConditionField2) = descriptiveStatistics( oscillations2(:) );
+        % Comparison field names
+        Comparison1Field = comparison1;
+        Comparison1Field = strrep( Comparison1Field, ' ', '' );
+        Comparison1Field = strrep( Comparison1Field, '-', '' );
+        Comparison1Field = strrep( Comparison1Field, '.', '' );
+        if isnumeric( Comparison1Field(1) )
+            Comparison1Field = [ 'D' Comparison1Field ];                    %#ok
+        end
+        Comparison2Field = comparison2;
+        Comparison2Field = strrep( Comparison2Field, ' ', '' );
+        Comparison2Field = strrep( Comparison2Field, '-', '' );
+        Comparison2Field = strrep( Comparison2Field, '.', '' );
+        if isnumeric( Comparison2Field(1) )
+            Comparison2Field = [ 'D' Comparison2Field ];                    %#ok
+        end
 
-        % Extrema distributions
-        % Overall maximum and direction
+        % Distributions across people of event-related spectral dispersion
+        % (inter-quartile range) for the paired comparison
+        distribution1 = reshape( oscillations1, N, nFrequencies * nTimesLimited );
+        distribution2 = reshape( oscillations2, N, nFrequencies * nTimesLimited );
+        distribution1 = iqr( distribution1, 2 );
+        distribution2 = iqr( distribution2, 2 );
+        Stats.(eventWindow).(metric).Stats.(Comparison1Field) = descriptiveStatistics( distribution1 );
+        Stats.(eventWindow).(metric).Stats.(Comparison2Field) = descriptiveStatistics( distribution2 );
+
+        % Plot distributions of event-related spectral dispersion
+        metricUnits = Data1.(eventWindow).([ metric 'Units' ]);
+        plotDistributions( distribution1, distribution2, metricUnits, comparison1, comparison2 )
+        distributionsName = [ eventWindow '-Related ' bandName newline ...
+                              'Distribution of ' metric ' Dispersion (IQR)' ];
+        title( distributionsName )
+        distributionsFile = [ eventWindow '-Related ' bandName ...
+                              'Distribution of ' metric ' Dispersion IQR ' ...
+                              ' for ' comparison1 ' vs ' comparison2       ...
+                              comparison3 '.fig' ];
+        savefig( distributionsFile )
+
+        % Clusters extrema data
+        for pn = 1:N
+            maskPositiveN(pn,:,:) = maskPositive;
+            maskNegativeN(pn,:,:) = maskNegative;
+            maskN(pn,:,:)         = mask;
+        end
         if p(1) == p(2) && ~isnan( p(1) )                                   % ~isnan( p(2) ) && ( p(2) < p(3) || isnan( p(3) ) )
-            data1Values = grandAverage1 .* maskPositive;
-            data2Values = grandAverage2 .* maskPositive;
+            data1Values = oscillations1 .* maskPositiveN;
+            data2Values = oscillations2 .* maskPositiveN;
         elseif p(1) == p(3) && ~isnan( p(1) )                               % ~isnan( p(3) ) && ( p(3) < p(2) || ~isnan( p(2) ) )
-            data1Values = grandAverage1 .* maskNegative;
-            data2Values = grandAverage2 .* maskNegative;
+            data1Values = oscillations1 .* maskNegativeN;
+            data2Values = oscillations2 .* maskNegativeN;
         elseif isnan( p(1) )                                                % ( isnan( p(2) ) && isnan( p(3) ) )
-            data1Values = grandAverage1 .* NaN;
-            data2Values = grandAverage2 .* NaN;
+            data1Values = oscillations1 .* NaN;
+            data2Values = oscillations2 .* NaN;
         else
-            data1Values = grandAverage1 .* mask;
-            data2Values = grandAverage2 .* mask;
+            data1Values = oscillations1 .* maskN;
+            data2Values = oscillations2 .* maskN;
         end
         data1Values(data1Values == 0) = NaN;
         data2Values(data2Values == 0) = NaN;
-        Stats.(eventWindow).(metric).Stats.([ ConditionField1 'Extrema' ]) = descriptiveStatistics( data1Values(:) );
-        Stats.(eventWindow).(metric).Stats.([ ConditionField2 'Extrema' ]) = descriptiveStatistics( data2Values(:) );
-        
+
+        % Distributions across people of event-related spectral clusters
+        % (medians) for the paired comparison
+        distributionC1 = reshape( data1Values, N, nFrequencies * nTimesLimited );
+        distributionC2 = reshape( data2Values, N, nFrequencies * nTimesLimited );
+        distributionC1 = median( distributionC1, 2, 'omitnan' );
+        distributionC2 = median( distributionC2, 2, 'omitnan' );
+        Stats.(eventWindow).(metric).Stats.([ Comparison1Field 'Clusters' ]) ...
+            = descriptiveStatistics( distributionC1 );
+        Stats.(eventWindow).(metric).Stats.([ Comparison2Field 'Clusters' ]) ...
+            = descriptiveStatistics( distributionC2 );
+
+        % Plot clusters distributions
+        plotDistributions( distributionC1, distributionC2, metricUnits, comparison1, comparison2 )
+        clustersName = [ eventWindow '-Related ' bandName newline ...
+                         'Distribution of ' metric ' Clusters' ];
+        title( clustersName )
+        clustersFile = [ eventWindow '-Related ' bandName ' Distribution of ' metric ...
+                         ' Clusters for ' comparison1 ' vs ' comparison2 comparison3 '.fig' ];
+        savefig( clustersFile )
+
 
     end % for iEventWindows
 end % for iMetrics
@@ -841,6 +943,70 @@ end
 %   E., … Puce, A. (2018, August 9). Best Practices in Data Analysis and
 %   Sharing in Neuroimaging using MEEG.
 %   https://doi.org/10.31219/osf.io/a8dhx
+
+
+% _________________________________________________________________________
+end
+
+
+%%
+% •.° Plot Distributions °.•
+% _________________________________________________________________________
+function plotDistributions( data1, data2, metricUnits, comparison1, comparison2 )
+
+figure
+
+% Raincloud plots (Allen et al., 2021)
+if exist( 'raincloud_plot.m', 'file' ) && ~all( isnan( data1 ), 'all' ) && ~all( isnan( data2 ), 'all' )
+
+    colour1 = [ 1  0  0 ];
+    colour2 = [ 0 0.3 1 ];
+
+    distribution2 = raincloud_plot( data2(:),                    ...
+                                    'color',            colour2, ...
+                                    'alpha',            0.3,     ...
+                                    'cloud_edge_col',   colour2, ...
+                                    'box_on',           1,       ...
+                                    'box_col_match',    1,       ...
+                                    'box_dodge',        1,       ...
+                                    'box_dodge_amount', .35,     ...
+                                    'dot_dodge_amount', .35      );
+
+    distribution1 = raincloud_plot( data1(:),                    ...
+                                    'color',            colour1, ...
+                                    'alpha',            0.3,     ...
+                                    'cloud_edge_col',   colour1, ...
+                                    'box_on',           1,       ...
+                                    'box_col_match',    1,       ...
+                                    'box_dodge',        1,       ...
+                                    'box_dodge_amount', .15,     ...
+                                    'dot_dodge_amount', .15      );
+
+    legend( [ distribution1{1} distribution2{1} ], { comparison1 comparison2 } );
+    ylabel( 'Probability Density' )
+    xlabel( metricUnits )
+
+    maxDensity1 = max( distribution1{1}.YData );
+    maxDensity2 = max( distribution2{1}.YData );
+    maxDensity  = max( maxDensity1, maxDensity2 );
+    ylim( [ -1/2*maxDensity maxDensity ] )
+
+% Box plots
+else
+    boxplot( [ data1(:) data2(:) ], 'labels', { comparison1 comparison2 } )
+    ylabel( metricUnits )
+
+end
+
+set( gcf, 'Color', 'w' )
+
+% • Reference •
+% -------------------------------------------------------------------------
+%
+% Allen, M., Poggiali, D., Whitaker, K., Marshall, T. R., van Langen, J., &
+%   Kievit, R. A. (2021). Raincloud plots: a multi-platform tool for robust
+%   data visualization [version 2; peer review: 2 approved]. Wellcome open
+%   research, 4, 63. https://doi.org/10.12688/wellcomeopenres.15191.2
 
 
 % _________________________________________________________________________
