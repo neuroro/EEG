@@ -252,9 +252,13 @@ if exist( 'conditionB', 'var' )
 end
 if iscell( condition1 )
     condition1Name = char( join( condition1 ) );
+else
+    condition1Name = condition1;
 end
 if iscell( condition2 )
     condition2Name = char( join( condition2 ) );
+else
+    condition2Name = condition2;
 end
 
 % Local spectra .mat files
@@ -263,6 +267,9 @@ if exist( 'localSpectraA', 'var' )
 end
 if exist( 'localSpectraB', 'var' )
     localSpectra2 = localSpectraB;
+end
+if exist( 'localSpectraA', 'var' ) && ~exist( 'localSpectraB', 'var' )
+    localSpectra2 = localSpectra1;
 end
 if ~contains( localSpectra1, '.mat' )
     localSpectra1 = [ localSpectra1 '.mat' ];
@@ -342,7 +349,7 @@ if nCentres ~= length( fieldnames( Data2 ) )
     error( 'Number of event-locked windowings mismatch between local spectra files' )
 end
 
-% Conditions
+% Conditions in the data
 ConditionField1 = strrep( condition1, ' ', '' );
 ConditionField2 = strrep( condition2, ' ', '' );
 iCondition1     = matches( Data1.(eventCentres{1}).Conditions, ConditionField1 );
@@ -614,18 +621,18 @@ for iMetric = 1:2
         savefig( fileNameGA2 )
 
         % Plot masked differences
-        maskedD = squeeze( meanDifferences ) .* mask;
+        maskedD   = squeeze( meanDifferences ) .* mask;
         plotTimeFrequency( maskedD, frequenciesBand, timesLimited )
-        figNameD = [ eventWindow '-Related ' bandName ' ' metric newline 'of ' comparison1 ' - ' comparison2 comparison3Title ];
+        figNameD  = [ eventWindow '-Related ' bandName ' ' metric newline 'of ' comparison1 ' - ' comparison2 comparison3Title ];
         title( figNameD )
         colormap( jetzeroed() )
         fileNameD = [ eventWindow '-Related ' bandName ' ' metric ' of ' comparison1 ' - ' comparison2 comparison3 '.fig' ];
         savefig( fileNameD )
 
         % Plot masked t-map
-        maskedT = tStats .* mask;
+        maskedT   = tStats .* mask;
         plotTimeFrequency( maskedT, frequenciesBand, timesLimited )
-        figNameT = [ eventWindow '-Related ' bandName ' ' metric ' t-Statistics' newline 'of ' comparison1 ' vs ' comparison2 comparison3Title ];
+        figNameT  = [ eventWindow '-Related ' bandName ' ' metric ' t-Statistics' newline 'of ' comparison1 ' vs ' comparison2 comparison3Title ];
         title( figNameT )
         colormap( jetzeroed() )
         fileNameT = [ eventWindow '-Related ' bandName ' ' metric ' t-Statistics of ' comparison1 ' vs ' comparison2 comparison3 '.fig' ];
@@ -815,6 +822,11 @@ for iMetric = 1:2
         clustersName = [ eventWindow '-Related ' bandName newline ...
                          'Distribution of ' metric ' Clusters' ];
         title( clustersName )
+        if contains( metric, 'coherence', 'IgnoreCase', true )
+            xl = xlim;
+            xl = min( xl(2), 1 );
+            xlim( [0 xl] )
+        end
         clustersFile = [ eventWindow '-Related ' bandName ' Distribution of ' metric ...
                          ' Clusters for ' comparison1 ' vs ' comparison2 comparison3 '.fig' ];
         savefig( clustersFile )
