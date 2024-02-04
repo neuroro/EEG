@@ -890,7 +890,7 @@ for iMetric = 1:nSpectralMetrics
         data2Values(data2Values == 0) = NaN;
 
         % Distributions across people of event-related spectral clusters
-        % (medians) for the paired comparison
+        % (medians) for the unpaired comparison
         distributionC1 = reshape( data1Values, N1, nFrequencies * nTimesLimited );
         distributionC2 = reshape( data2Values, N2, nFrequencies * nTimesLimited );
         distributionC1 = median( distributionC1, 2, 'omitnan' );
@@ -1236,7 +1236,12 @@ if ( exist( 'raincloud_plot_k.m', 'file' ) || exist( 'raincloud_plot.m', 'file' 
 
 % Box plots
 else
-    boxplot( [ data1(:) data2(:) ], 'labels', { comparison1 comparison2 } )
+    m1              = length( data1(:) );
+    m2              = length( data2(:) );
+    boxData         = NaN( max( m1, m2 ), 2 );
+    boxData(1:m1,1) = data1(:);
+    boxData(1:m2,2) = data2(:);
+    boxplot( boxData, 'labels', { comparison1 comparison2 } )
     ylabel( metricUnits )
 
 end
