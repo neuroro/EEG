@@ -9,7 +9,7 @@ Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, ...
 %
 % Statistical hypothesis testing of oscillatory differences in neural
 % event-related spectral metrics using Monte Carlo permutation tests with
-% the maximum sum of cluster dependent samples t-statistic as the test
+% the maximum sum of cluster dependent samples t-statistics as the test
 % statistic of the permutation tests
 %
 % Localised event-related spectral data is collated by eegLocalSpectra.m
@@ -130,7 +130,8 @@ Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, ...
 %
 %   Cluster permutation test statistics and descriptive statistics of
 %    event-related spectra distributions and plots of grand average
-%    spectra, difference spectra, and their t-maps
+%    spectra, difference spectra, masked t-maps, and the distributions
+%    across people of spectral dispersion and spectral clusters
 %
 % !!! Requires !!!
 %
@@ -144,8 +145,9 @@ Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, ...
 %
 %   EEGLAB for downsampling with anti-aliasing
 %
-%   raincloud_plot.m by Allen et al. (2021) available at
-%    https://github.com/RainCloudPlots/RainCloudPlots/blob/master/tutorial_matlab/raincloud_plot.m
+%   raincloud_plot_k.m by Allen et al. (2021) modified by Rohan King (2024)
+%    available from this author or raincloud_plot.m by Allen et al. (2021)
+%    available at https://github.com/RainCloudPlots/RainCloudPlots/blob/master/tutorial_matlab/raincloud_plot.m
 %
 % • Author •
 % -------------------------------------------------------------------------
@@ -202,13 +204,13 @@ Stats = spectralClusters( pThreshold, frequencyBand, timeLimits, ...
 
 % Condition labels
 % as 'ConditionName' or { 'Name1' 'Name2' ... } for the average of multiple
-condition1 = 'ConditionName1'; #
-condition2 = 'ConditionName2'; #
+condition1 = 'ConditionName1';
+condition2 = 'ConditionName2';
 
 % Local spectra file names
 % with or without the .mat file extension
-localSpectra1 = 'TimeFrequencyBilateralParietalCluster.mat'; #
-localSpectra2 = 'TimeFrequencyBilateralParietalCluster.mat'; #
+localSpectra1 = 'TimeFrequencyCluster1.mat';
+localSpectra2 = 'TimeFrequencyCluster2.mat';
 
 
 %% Startup
@@ -230,7 +232,7 @@ disp( '_________________________________________________________________________
 disp( ' ' )
 disp( 'Statistical hypothesis testing of oscillatory differences in neural'     )
 disp( 'event-related spectral metrics using Monte Carlo permutation tests with' )
-disp( 'the maximum sum of cluster dependent samples t-statistic as the test'    )
+disp( 'the maximum cluster sum of dependent samples t-statistics as the test'   )
 disp( 'statistic of the permutation tests'                                      )
 disp( ' ' )
 disp( 'Localised event-related spectral data is collated by eegLocalSpectra.m' )
@@ -328,7 +330,6 @@ end
 % -------------------------------------------------------------------------
 
 clusterRunTime( 'Loading' )
-disp( ' ' )
 
 % Local spectra mat file paths
 spectraPath1 = which( localSpectra1 );
@@ -358,11 +359,12 @@ nConditions1    = sum( iCondition1 );
 nConditions2    = sum( iCondition2 );
 
 % Spectral metrics
-spectralFields1 = fieldnames( Data1.(eventCentres{1}).GrandAverage );
-spectralFields2 = fieldnames( Data2.(eventCentres{1}).GrandAverage );
-metricFields    = ~contains( spectralFields1, { 'Unit' 'Dimension' } );
-spectralMetrics = spectralFields1(metricFields);
-if length( spectralMetrics ) ~= length( spectralFields2(~contains( spectralFields2, { 'Unit' 'Dimension' } )) )
+spectralFields1  = fieldnames( Data1.(eventCentres{1}).GrandAverage );
+spectralFields2  = fieldnames( Data2.(eventCentres{1}).GrandAverage );
+metricFields     = ~contains( spectralFields1, { 'Unit' 'Dimension' } );
+spectralMetrics  = spectralFields1(metricFields);
+nSpectralMetrics = length( spectralMetrics );
+if nSpectralMetrics ~= length( spectralFields2(~contains( spectralFields2, { 'Unit' 'Dimension' } )) )
     error( 'Spectral metrics mismatch between local spectra files' )
 end
 
@@ -494,11 +496,10 @@ end
 % -------------------------------------------------------------------------
 
 clusterRunTime( 'Spectral difference testing started at' )
-disp( ' ' )
 
 % Loop through: Metrics and trial event-locked windows
-for iMetric = 1:2
-    for iEventWindow = 1:2
+for iMetric = 1:nSpectralMetrics
+    for iEventWindow = 1:nCentres
 
         % Curent metric and event-locked window
         metric      = spectralMetrics{iMetric};
@@ -605,38 +606,38 @@ for iMetric = 1:2
         colourLimits = [ minColour maxColour ];
 
         % Plot grand average 1
-        plotTimeFrequency( grandAverage1, frequenciesBand, timesLimited )
+        figGA1      = plotTimeFrequency( grandAverage1, frequenciesBand, timesLimited );
         figNameGA1  = [ eventWindow '-Related ' bandName ' ' metric newline 'of ' comparison1 comparison3Title ];
         title( figNameGA1 )
         colormap( jetzeroed( colourLimits ) )
         fileNameGA1 = [ eventWindow '-Related ' bandName ' ' metric ' of ' comparison1 comparison3 '.fig' ];
-        savefig( fileNameGA1 )
+        savefig( figGA1, fileNameGA1 )
 
         % Plot grand average 2
-        plotTimeFrequency( grandAverage2, frequenciesBand, timesLimited )
+        figGA2      = plotTimeFrequency( grandAverage2, frequenciesBand, timesLimited );
         figNameGA2  = [ eventWindow '-Related ' bandName ' ' metric newline 'of ' comparison2 comparison3Title ];
         title( figNameGA2 )
         colormap( jetzeroed( colourLimits ) )
         fileNameGA2 = [ eventWindow '-Related ' bandName ' ' metric ' of ' comparison2 comparison3 '.fig' ];
-        savefig( fileNameGA2 )
+        savefig( figGA2, fileNameGA2 )
 
         % Plot masked differences
         maskedD   = squeeze( meanDifferences ) .* mask;
-        plotTimeFrequency( maskedD, frequenciesBand, timesLimited )
+        figD      = plotTimeFrequency( maskedD, frequenciesBand, timesLimited );
         figNameD  = [ eventWindow '-Related ' bandName ' ' metric newline 'of ' comparison1 ' - ' comparison2 comparison3Title ];
         title( figNameD )
         colormap( jetzeroed() )
         fileNameD = [ eventWindow '-Related ' bandName ' ' metric ' of ' comparison1 ' - ' comparison2 comparison3 '.fig' ];
-        savefig( fileNameD )
+        savefig( figD, fileNameD )
 
         % Plot masked t-map
         maskedT   = tStats .* mask;
-        plotTimeFrequency( maskedT, frequenciesBand, timesLimited )
+        figT      = plotTimeFrequency( maskedT, frequenciesBand, timesLimited );
         figNameT  = [ eventWindow '-Related ' bandName ' ' metric ' t-Statistics' newline 'of ' comparison1 ' vs ' comparison2 comparison3Title ];
         title( figNameT )
         colormap( jetzeroed() )
         fileNameT = [ eventWindow '-Related ' bandName ' ' metric ' t-Statistics of ' comparison1 ' vs ' comparison2 comparison3 '.fig' ];
-        savefig( fileNameT )
+        savefig( figT, fileNameT )
 
 
         %% Cluster permutation testing
@@ -685,7 +686,7 @@ for iMetric = 1:2
 
         % Plot tested differences
         testedMeanD = squeeze( mean( spectraD, 1, 'omitnan' ) );
-        plotTimeFrequency( testedMeanD, frequenciesBand, testedTimes )
+        fig         = plotTimeFrequency( testedMeanD, frequenciesBand, testedTimes );
         figName     = [ eventWindow '-Related ' bandName ' ' metric newline  ...
                         'of ' comparison1 ' - ' comparison2 comparison3Title ...
                         newline 'Tested Differences' ];
@@ -694,7 +695,7 @@ for iMetric = 1:2
         figFileName = [ eventWindow '-Related ' bandName ' ' metric      ...
                         ' of ' comparison1 ' - ' comparison2 comparison3 ...
                         ' Tested Differences.fig' ];
-        savefig( figFileName )
+        savefig( fig, figFileName )
 
         % % Distance between each time-frequency point for clustering
         % clusterRunTime( 'Distance function' )
@@ -764,27 +765,88 @@ for iMetric = 1:2
         end
 
         % Distributions across people of event-related spectral dispersion
-        % (inter-quartile range) for the paired comparison
-        distribution1 = reshape( oscillations1, N, nFrequencies * nTimesLimited );
-        distribution2 = reshape( oscillations2, N, nFrequencies * nTimesLimited );
-        distribution1 = iqr( distribution1, 2 );
-        distribution2 = iqr( distribution2, 2 );
-        Stats.(eventWindow).(metric).Stats.(Comparison1Field) = descriptiveStatistics( distribution1 );
-        Stats.(eventWindow).(metric).Stats.(Comparison2Field) = descriptiveStatistics( distribution2 );
+        % (inter-quartile range, L-scale, and root mean squared deviation
+        % from the signed root mean squared) for the paired comparison
+        distribution1     = reshape( oscillations1, N, nFrequencies * nTimesLimited );
+        distribution2     = reshape( oscillations2, N, nFrequencies * nTimesLimited );
+        distributionIQR1  = iqr( distribution1, 2 );
+        distributionIQR2  = iqr( distribution2, 2 );
+        if any( distributionIQR1 == 0, 'all' )
+            iConstant = find( distributionIQR1 == 0 );
+            error( [ 'Constant values in group A for person ' num2str( iConstant ) ' in ' eventWindow '-related ' metric ] )
+        end
+        if any( distributionIQR2 == 0, 'all' )
+            iConstant = find( distributionIQR2 == 0 );
+            error( [ 'Constant values in group B for person ' num2str( iConstant ) ' in ' eventWindow '-related ' metric ] )
+        end
+        Stats.(eventWindow).(metric).Stats.([ Comparison1Field 'IQR' ]) = descriptiveStatistics( distributionIQR1 );
+        Stats.(eventWindow).(metric).Stats.([ Comparison2Field 'IQR' ]) = descriptiveStatistics( distributionIQR2 );
+        distributionLscale1 = lscale( distribution1, 2 );
+        distributionLscale2 = lscale( distribution2, 2 );
+        Stats.(eventWindow).(metric).Stats.([ Comparison1Field 'Lscale' ]) = descriptiveStatistics( distributionLscale1 );
+        Stats.(eventWindow).(metric).Stats.([ Comparison2Field 'Lscale' ]) = descriptiveStatistics( distributionLscale2 );
+        distributionRMSD1 = rmsdrms( distribution1, 2 );
+        distributionRMSD2 = rmsdrms( distribution2, 2 );
+        Stats.(eventWindow).(metric).Stats.([ Comparison1Field 'RMSDeviation' ]) = descriptiveStatistics( distributionRMSD1 );
+        Stats.(eventWindow).(metric).Stats.([ Comparison2Field 'RMSDeviation' ]) = descriptiveStatistics( distributionRMSD2 );
 
         % Plot distributions of event-related spectral dispersion
+
+        % Dispersion limits
         metricUnits = Data1.(eventWindow).([ metric 'Units' ]);
-        plotDistributions( distribution1, distribution2, metricUnits, comparison1, comparison2 )
-        distributionsName = [ eventWindow '-Related ' bandName newline ...
-                              'Distribution of ' metric ' Dispersion (IQR)' ];
-        title( distributionsName )
-        distributionsFile = [ eventWindow '-Related ' bandName ...
-                              'Distribution of ' metric ' Dispersion IQR ' ...
-                              ' for ' comparison1 ' vs ' comparison2       ...
-                              comparison3 '.fig' ];
-        savefig( distributionsFile )
+        maxRange    = max( range( oscillations1, 'all' ), range( oscillations2, 'all' ) );
+        limits      = [0 maxRange];
+
+        % Event-related spectral IQR
+        figIQR = plotDistributions( distributionIQR1, distributionIQR2, ...
+                                    metricUnits, comparison1, comparison2, limits );
+        xl     = xlim;
+        xl(1)  = max( xl(1), 0 );
+        xlim( xl )
+        distributionsIQRName = [ eventWindow '-Related ' bandName newline ...
+                                 'Distribution of ' metric ' Dispersion (IQR)' ];
+        title( distributionsIQRName )
+        distributionsIQRFile = [ eventWindow '-Related ' bandName             ...
+                                 'Distribution of ' metric ' Dispersion IQR ' ...
+                                 'for ' comparison1 ' vs ' comparison2        ...
+                                 comparison3 '.fig'                           ];
+        savefig( figIQR, distributionsIQRFile )
+
+        % Event-related spectral L-scale
+        figLS = plotDistributions( distributionLscale1, distributionLscale2, ...
+                                   metricUnits, comparison1, comparison2, limits );
+        xl     = xlim;
+        xl(1)  = max( xl(1), 0 );
+        xlim( xl )
+        distributionsLSName = [ eventWindow '-Related ' bandName newline ...
+                                'Distribution of ' metric ' Dispersion (L-Scale)' ];
+        title( distributionsLSName )
+        distributionsLSFile = [ eventWindow '-Related ' bandName                 ...
+                                'Distribution of ' metric ' Dispersion L-Scale ' ...
+                                'for ' comparison1 ' vs ' comparison2            ...
+                                comparison3 '.fig'                               ];
+        savefig( figLS, distributionsLSFile )
+
+        % Event-related spectral RMS deviation from the signed RMS
+        figRMS = plotDistributions( distributionRMSD1, distributionRMSD2, ...
+                                    metricUnits, comparison1, comparison2, limits );
+        xl     = xlim;
+        xl(1)  = max( xl(1), 0 );
+        xlim( xl )
+        distributionsRMSName = [ eventWindow '-Related ' bandName newline      ...
+                                 'Distribution of ' metric ' Dispersion '      ...
+                                 newline '(RMS Deviation from the Signed RMS)' ];
+        title( distributionsRMSName )
+        distributionsRMSFile = [ eventWindow '-Related ' bandName                  ...
+                                 'Distribution of ' metric ' Dispersion RMS '      ...
+                                 'Deviation from the Signed RMS for '              ...
+                                 comparison1 ' vs ' comparison2 comparison3 '.fig' ];
+        savefig( figRMS, distributionsRMSFile )
 
         % Clusters extrema data
+        maskPositiveN = zeros( N, nFrequencies, nTimesLimited );
+        maskNegativeN = zeros( N, nFrequencies, nTimesLimited );
+        maskN         = zeros( N, nFrequencies, nTimesLimited );
         for pn = 1:N
             maskPositiveN(pn,:,:) = maskPositive;
             maskNegativeN(pn,:,:) = maskNegative;
@@ -818,24 +880,54 @@ for iMetric = 1:2
             = descriptiveStatistics( distributionC2 );
 
         % Plot clusters distributions
-        plotDistributions( distributionC1, distributionC2, metricUnits, comparison1, comparison2 )
+        if contains( metric, 'coherence', 'IgnoreCase', true )
+            limits = [0 1];
+        else
+            limits = 'unbounded';
+        end
+        figC = plotDistributions( distributionC1, distributionC2, ...
+                                  metricUnits, comparison1, comparison2, limits );
         clustersName = [ eventWindow '-Related ' bandName newline ...
-                         'Distribution of ' metric ' Clusters' ];
+                         'Distribution of ' metric ' Clusters'    ];
         title( clustersName )
         if contains( metric, 'coherence', 'IgnoreCase', true )
-            xl = xlim;
-            xl = min( xl(2), 1 );
-            xlim( [0 xl] )
+            xl  = xlim;
+            xl1 = max( xl(1), 0 );
+            xl2 = min( xl(2), 1 );
+            xlim( [xl1 xl2] )
         end
         clustersFile = [ eventWindow '-Related ' bandName ' Distribution of ' metric ...
                          ' Clusters for ' comparison1 ' vs ' comparison2 comparison3 '.fig' ];
-        savefig( clustersFile )
+        savefig( figC, clustersFile )
 
 
     end % for iEventWindows
 end % for iMetrics
 
+
+% Comparison information
+Stats.Comparison.Data1                   = [ comparison1 comparison3 ];
+Stats.Comparison.Data2                   = [ comparison2 comparison3 ];
+Stats.Comparison.N                       = N;
+Stats.Comparison.DifferenceType          = 'Paired data from repeated measures of a single sample';
+Stats.Comparison.FrequencyBand           = frequencyBand;
+Stats.Comparison.TimeLimits              = timeLimit;
+if ~isempty( downsampling ) && isnumeric( downsampling ) && downsampling ~= samplingRate
+    Stats.Comparison.SamplingRate        = downsampling;
+else
+    Stats.Comparison.SamplingRate        = samplingRate;
+end
+Stats.Comparison.ClusterStatistic        = 'Maximum cluster sum of dependent samples t-statistics';
+Stats.Comparison.ClusterThreshold.pValue = pThreshold;
+Stats.Comparison.ClusterThreshold.tValue = tThreshold;
+Stats.Comparison.Permutations            = nPermutations;
+
+
+% Save spectral difference statistics
+save SpectralDifferenceStatistics Stats
+
 clusterRunTime( 'Spectral difference testing completed at' )
+
 
 % _________________________________________________________________________
 end
@@ -955,13 +1047,12 @@ end
 % -------------------------------------------------------------------------
 %
 % Gyurkovics, M. & Levita, L. (2021). Dynamic Adjustments of Midfrontal
-%   Control Signals in Adults and Adolescents. Cerebral Cortex, 31(2), 
-%   795–808. https://doi.org/10.1093/cercor/bhaa258
+%  Control Signals in Adults and Adolescents. Cerebral Cortex, 31(2),
+%  795–808. https://doi.org/10.1093/cercor/bhaa258
 %
 % Pernet, C. R., Garrido, M., Gramfort, A., Maurits, N., Michel, C., Pang,
-%   E., … Puce, A. (2018, August 9). Best Practices in Data Analysis and
-%   Sharing in Neuroimaging using MEEG.
-%   https://doi.org/10.31219/osf.io/a8dhx
+%  E., … Puce, A. (2018, August 9). Best Practices in Data Analysis and
+%  Sharing in Neuroimaging using MEEG. https://doi.org/10.31219/osf.io/a8dhx
 
 
 % _________________________________________________________________________
@@ -969,37 +1060,146 @@ end
 
 
 %%
+% •.° Sample L-Scale °.•
+% _________________________________________________________________________
+%
+function ls = lscale( X )
+
+% Number of people
+N = size( X, 1 );
+
+% Number of metric cluster space points
+m = size( X, 2 );
+
+% Order statistics of X
+Xi = sort( X, 2 );
+
+% L-scale constant
+constant = 1 / ( 2 * nchoosek( m, 2 ) );
+
+% L-scale binomial coefficients
+BC.Lxi = zeros( N, m ); % Less than xi
+BC.Rxi = zeros( N, m ); % Greater than xi
+for p = 1:N
+    for i = 1:m
+        if i - 1 >= 2
+            BC.Lxi(p,i) = i - 1;
+        end
+        if m - i >= 2
+            BC.Rxi(p,i) = m - i;
+        end
+    end
+end
+
+% L-scale terms
+terms = ( BC.Lxi - BC.Rxi ) .* Xi;
+
+% L-scale
+ls = constant * sum( terms );
+
+% • Reference •
+% -------------------------------------------------------------------------
+%
+% Wang, Q. J. (1996). Direct sample estimators of L moments. Water 
+%  Resources Research, 32(12), 3617-3619. https://doi.org/10.1029/96WR02675
+
+
+% _________________________________________________________________________
+end
+
+
+
+%%
+% •.° Root Mean Squared Deviation From The Root Mean Squared °.•
+% _________________________________________________________________________
+%
+function rmsd = rmsdrms( X, dim )
+
+% Sign of the mean
+signX = sign( mean( X, dim, 'omitnan') );
+
+% Root mean squared
+rmsX  = rms( X, dim, 'omitnan' );
+
+% Signed root mean squared
+srms  = rmsX .* signX;
+
+% Deviation from the signed root mean squared
+drms  = X - srms;
+
+% Root mean squared deviation from the root mean squared
+rmsd  = rms( drms, dim, 'omitnan' );
+
+
+% _________________________________________________________________________
+end
+
+
+
+%%
 % •.° Plot Distributions °.•
 % _________________________________________________________________________
-function plotDistributions( data1, data2, metricUnits, comparison1, comparison2 )
+%
+function fig = plotDistributions( data1, data2, metricUnits, comparison1, comparison2, limits )
 
-figure
+fig = figure;
 
 % Raincloud plots (Allen et al., 2021)
-if exist( 'raincloud_plot.m', 'file' ) && ~all( isnan( data1 ), 'all' ) && ~all( isnan( data2 ), 'all' )
+if ( exist( 'raincloud_plot_k.m', 'file' ) || exist( 'raincloud_plot.m', 'file' ) ) ...
+   && ~all( isnan( data1 ), 'all' ) && ~all( isnan( data2 ), 'all' )
 
     colour1 = [ 1  0  0 ];
     colour2 = [ 0 0.3 1 ];
 
-    distribution2 = raincloud_plot( data2(:),                    ...
-                                    'color',            colour2, ...
-                                    'alpha',            0.3,     ...
-                                    'cloud_edge_col',   colour2, ...
-                                    'box_on',           1,       ...
-                                    'box_col_match',    1,       ...
-                                    'box_dodge',        1,       ...
-                                    'box_dodge_amount', .35,     ...
-                                    'dot_dodge_amount', .35      );
+    % Modified raincloud plot function with kernel support limits
+    if exist( 'raincloud_plot_k.m', 'file' )
 
-    distribution1 = raincloud_plot( data1(:),                    ...
-                                    'color',            colour1, ...
-                                    'alpha',            0.3,     ...
-                                    'cloud_edge_col',   colour1, ...
-                                    'box_on',           1,       ...
-                                    'box_col_match',    1,       ...
-                                    'box_dodge',        1,       ...
-                                    'box_dodge_amount', .15,     ...
-                                    'dot_dodge_amount', .15      );
+        distribution2 = raincloud_plot_k( data2(:),                    ...
+                                          'color',            colour2, ...
+                                          'alpha',            0.3,     ...
+                                          'cloud_edge_col',   colour2, ...
+                                          'box_on',           1,       ...
+                                          'box_col_match',    1,       ...
+                                          'box_dodge',        1,       ...
+                                          'box_dodge_amount', .35,     ...
+                                          'dot_dodge_amount', .35,     ...
+                                          'support',          limits   );
+
+        distribution1 = raincloud_plot_k( data1(:),                    ...
+                                          'color',            colour1, ...
+                                          'alpha',            0.3,     ...
+                                          'cloud_edge_col',   colour1, ...
+                                          'box_on',           1,       ...
+                                          'box_col_match',    1,       ...
+                                          'box_dodge',        1,       ...
+                                          'box_dodge_amount', .15,     ...
+                                          'dot_dodge_amount', .15,     ...
+                                          'support',          limits   );
+
+    % Original raincloud plot function
+    else
+
+        distribution2 = raincloud_plot(   data2(:),                    ...
+                                          'color',            colour2, ...
+                                          'alpha',            0.3,     ...
+                                          'cloud_edge_col',   colour2, ...
+                                          'box_on',           1,       ...
+                                          'box_col_match',    1,       ...
+                                          'box_dodge',        1,       ...
+                                          'box_dodge_amount', .35,     ...
+                                          'dot_dodge_amount', .35      );
+
+        distribution1 = raincloud_plot(   data1(:),                    ...
+                                          'color',            colour1, ...
+                                          'alpha',            0.3,     ...
+                                          'cloud_edge_col',   colour1, ...
+                                          'box_on',           1,       ...
+                                          'box_col_match',    1,       ...
+                                          'box_dodge',        1,       ...
+                                          'box_dodge_amount', .15,     ...
+                                          'dot_dodge_amount', .15      );
+
+    end
 
     legend( [ distribution1{1} distribution2{1} ], { comparison1 comparison2 } );
     ylabel( 'Probability Density' )
@@ -1008,7 +1208,7 @@ if exist( 'raincloud_plot.m', 'file' ) && ~all( isnan( data1 ), 'all' ) && ~all(
     maxDensity1 = max( distribution1{1}.YData );
     maxDensity2 = max( distribution2{1}.YData );
     maxDensity  = max( maxDensity1, maxDensity2 );
-    ylim( [ -1/2*maxDensity maxDensity ] )
+    ylim( [ -0.6*maxDensity 1.05*maxDensity ] )
 
 % Box plots
 else
@@ -1036,6 +1236,7 @@ end
 %%
 % •.° Cluster Run Time °.•
 % _________________________________________________________________________
+%
 function clusterRunTime( message )
 
 % Time
