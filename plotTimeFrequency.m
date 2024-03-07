@@ -1,4 +1,4 @@
-function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
+function fig = plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 %
 % •.° Plot Time-Frequency Decompositions or Event-Related Spectra °.•
 % _________________________________________________________________________
@@ -9,14 +9,14 @@ function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 %
 % • Usage •
 % -------------------------------------------------------------------------
-% >> plotTimeFrequency( eventRelatedSpectra, frequencies, times, ...
-%                       'OptionName1', optionValue1, 'OptionName2', optionValue2, ... )
+% >> fig = plotTimeFrequency( eventRelatedSpectra, frequencies, times, ...
+%            'OptionName1', optionValue1, 'OptionName2', optionValue2, ... )
 %
 % For example:
-% >> plotTimeFrequency( eventRelatedSpectra, frequencies, times )
-% >> plotTimeFrequency( eventRelatedSpectra, frequencies, times, 'colourscale', [], 'cmap', 'jet' )
-% >> plotTimeFrequency( squeeze(mean(Stimulus.SpectralPower,1)), Stimulus.Frequencies, Stimulus.Times )
-% >> plotTimeFrequency( squeeze(Stimulus.GrandAverage.SpectralPower(1,:,:)), Stimulus.Frequencies, Stimulus.Times )
+% >> fig = plotTimeFrequency( eventRelatedSpectra, frequencies, times );
+% >> plotTimeFrequency( eventRelatedSpectra, frequencies, times, 'colourscale', [], 'cmap', 'jet' );
+% >> plotTimeFrequency( squeeze(mean(Stimulus.SpectralPower,1)), Stimulus.Frequencies, Stimulus.Times );
+% >> plotTimeFrequency( squeeze(Stimulus.GrandAverage.SpectralPower(1,:,:)), Stimulus.Frequencies, Stimulus.Times );
 %
 %  <-- - -  -   -     -        -             -        -     -   -  - - -->
 %
@@ -30,7 +30,7 @@ function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 %
 %  <-- - -  -   -     -        -             -        -     -   -  - - -->
 %
-% :( 'Optional', Inputs )
+% •••( 'Optional', Inputs )
 %
 %   'fticks'      Number of frequencies displayed on the y-axis
 %                   (default 10)
@@ -45,10 +45,11 @@ function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 %                   '0-'     zero maximum for negative data, as above
 %                   '0='     zero centred for positive and negative data, 
 %                            as above
-%                   (default scale to the absolute maximum or scale to the 
-%                    data if jetzeroed or bluewhitered exist)
+%                   (default scale to the data if jetzeroed, colourszeroed,
+%                    or bluewhitered exist, otherwise scale to the absolute
+%                    maximum)
 %
-%   'colourmap'   Colour map used to draw the data by MATLAB's colormap
+%   'colourmap'   Colour map used to draw the data
 %    or 'cmap'      Example pre-set colour spaces:
 %                   'jet'
 %                   'parula'
@@ -57,8 +58,10 @@ function plotTimeFrequency( eventRelatedSpectra, frequencies, times, varargin )
 %                   Nx3 matrix of N gradients x RGB values
 %                   or
 %                   'jetzeroed' by Rohan King (2023) https://github.com/neuroro/EEG/blob/main/jetzeroed.m
+%                   'colourszeroed' by Rohan King (2023) https://github.com/neuroro/EEG/blob/main/colourszeroed.m
 %                   'bluewhitered' by Nathan Childress (2008) https://au.mathworks.com/matlabcentral/fileexchange/4058-bluewhitered
-%                   (default jet or bluewhitered if it exists)
+%                   (default jetzeroed, colourszeroed, or bluewhitered if 
+%                    they exist, otherwise jet)
 %
 %   'colourbar'   Draw a colour bar at the specified location
 %    or 'cbar'      'T'   top outside the plot box
@@ -126,7 +129,7 @@ F = round( 2.^( linspace( fmin, fmax, vars.fticks ) ), 1 );
 
 % Any matching log base and exponent will give the same spacing except
 % for floating point errors
-% In 2022a logarithmic spaces for bases 2 vs. e vs. 10 are identical
+% In R2022a logarithmic spaces for bases 2 vs. e vs. 10 are identical
 % to 1e-13 and nearly identical to 1e-14
 
 % Rounding resolution
@@ -146,7 +149,9 @@ vars.Y = F;
 if isfield( vars, 'colourscale' )
     colourscale = vars.colourscale;
 else
-    if exist( 'jetzeroed.m', 'file' ) || exist( 'bluewhitered.m', 'file' )
+    if exist( 'jetzeroed.m',     'file' ) || ...
+       exist( 'colourszeroed.m', 'file' ) || ...
+       exist( 'bluewhitered.m',  'file' )
         colourscale = [];
     else
         colourscale = '0';
@@ -204,7 +209,7 @@ end
 C = { 'XData' vars.X 'YData' vars.Y 'CData' eventRelatedSpectra };
 
 % Draw pixel image
-figure
+fig = figure;
 if isempty( colourscale )
     imagesc( C{:} )
 else
@@ -238,9 +243,13 @@ else
         colormap( jetzeroed() )
     catch
         try
-            colormap( bluewhitered() )
+            colormap( colourszeroed() )
         catch
-            colormap jet
+            try
+                colormap( bluewhitered() )
+            catch
+                colormap jet
+            end
         end
     end
 end
@@ -276,8 +285,11 @@ ylabel( vars.YL )
 end
 
 
-%% Variable input arguments -> variables struct
-% -------------------------------------------------------------------------
+
+%% 
+% •.° Variable Input Arguments -> Variables Struct °.•
+% _________________________________________________________________________
+%
 function vars = plotTFvars( varargin )
 
 [ varoptions, varoops ] = plotTFcases;
@@ -322,11 +334,16 @@ for i = 1:2:length( varargin )-1
 
 end
 
+
+% _________________________________________________________________________
 end
 
 
-%% Variable input cases
-% -------------------------------------------------------------------------
+
+%% 
+% •.° Variable Input Cases °.•
+% _________________________________________________________________________
+%
 function [ varoptions, varoops ] = plotTFcases
 
 % Named variable input cases
@@ -353,5 +370,8 @@ varoops.cm = ['Specify the colour map as a named pre-set or as ', ...
               'a matrix of gradients x RGB'];
 varoops.ft = 'Specify the number of frequencies to display on the y-axis';
 
+
+% _________________________________________________________________________
 end
+
 
