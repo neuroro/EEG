@@ -14,9 +14,8 @@ function fig = plotTimeFrequency( eventRelatedSpectra, frequencies, times, varar
 %
 % For example:
 % >> fig = plotTimeFrequency( eventRelatedSpectra, frequencies, times );
-% >> plotTimeFrequency( eventRelatedSpectra, frequencies, times, 'colourscale', [], 'cmap', 'jet' );
-% >> plotTimeFrequency( squeeze(mean(Stimulus.SpectralPower,1)), Stimulus.Frequencies, Stimulus.Times );
-% >> plotTimeFrequency( squeeze(Stimulus.GrandAverage.SpectralPower(1,:,:)), Stimulus.Frequencies, Stimulus.Times );
+% >> plotTimeFrequency( eventRelatedSpectra, frequencies, times, 'colourscale', [z1 z2], 'cmap', 'jet' );
+% >> plotTimeFrequency( Stimulus.GrandAverage.SpectralPower, Stimulus.Frequencies, Stimulus.Times );
 %
 %  <-- - -  -   -     -        -             -        -     -   -  - - -->
 %
@@ -24,7 +23,7 @@ function fig = plotTimeFrequency( eventRelatedSpectra, frequencies, times, varar
 %
 %   eventRelatedSpectra: Time-frequency data to plot using colour values
 %
-%   frequencies:         Vector of logarithmically spaced frequencies in Hz
+%   frequencies:         Vector of frequencies in Hz
 %
 %   times:               Vector of time point values in milliseconds
 %
@@ -32,19 +31,26 @@ function fig = plotTimeFrequency( eventRelatedSpectra, frequencies, times, varar
 %
 % •••( 'Optional', Inputs )
 %
-%   'fticks'      Number of frequencies displayed on the y-axis
-%                   (default 10)
+%   'colourvalue' Colour values to plot
+%    or 'cv'        'exact'   exact time-frequency data values
+%                   'ratio'   power ratio relative to baseline
+%                             (for time-frequency data values of power in
+%                              decibels relative to baseline)
+%                   'percent' percent change in power relative to baseline
+%                             (for time-frequency data values of power in
+%                              decibels relative to baseline)
+%                   (default exact)
 %
 %   'colourscale' Scale of the colour space
-%                   [] or '' scale to the data
-%                   [z1 z2]  scale from z1 to z2
-%    or 'cs'        '0' or   scale to the absolute maximum so that zero is
-%                   'abs'    a fixed colour, which is useful for comparing
-%                            plots side-by-side
-%                   '0+'     zero minimum for positive data, as above
-%                   '0-'     zero maximum for negative data, as above
-%                   '0='     zero centred for positive and negative data, 
-%                            as above
+%    or 'cs'        [] or ''  scale to the data
+%                   [z1 z2]   scale from z1 to z2
+%                   '0' or    scale to the absolute maximum so that zero is
+%                   'abs'     a fixed colour, which is useful for comparing
+%                             plots side-by-side
+%                   '0+'      zero minimum for positive data, as above
+%                   '0-'      zero maximum for negative data, as above
+%                   '0='      zero centred for positive and negative data, 
+%                             as above
 %                   (default scale to the data if jetzeroed, colourszeroed,
 %                    or bluewhitered exist, otherwise scale to the absolute
 %                    maximum)
@@ -73,10 +79,10 @@ function fig = plotTimeFrequency( eventRelatedSpectra, frequencies, times, varar
 %
 % • Author •
 % -------------------------------------------------------------------------
-% Rohan O. C. King, 2023
+% Rohan O. C. King, 2024
 % @neuroro
 %
-% Copyright 2023 Rohan King
+% Copyright 2024 Rohan King
 %
 % This program is free software: you can redistribute it and/or modify it
 % under the terms of the GNU General Public License as published by the
@@ -91,7 +97,7 @@ function fig = plotTimeFrequency( eventRelatedSpectra, frequencies, times, varar
 % Please cite this code if you use it
 
 
-% Inputs
+% Optional inputs
 % -------------------------------------------------------------------------
 
 if isempty( varargin )
@@ -99,103 +105,84 @@ if isempty( varargin )
 else
     vars = plotTFvars( varargin{:} );
 end
-vars.XL  = 'Time (ms)';
-vars.X   = times;
 
 
-% Frequencies spaced logarithmically
+% Relative power options
 % -------------------------------------------------------------------------
 
-vars.YL  = 'Frequency (Hz)';
-vars.YS  = 'log';
+ratioColour   = false;
+percentColour = false;
+if isfield( vars, 'colourvalue' )
+    switch vars.colourvalue
 
-% Default f-ticks
-if ~isfield( vars, 'fticks' )
-    vars.fticks = 10;
+        % Power ratio relative to baseline
+        case 'ratio'
+            eventRelatedSpectra = 10 .^ ( eventRelatedSpectra / 10 ) - 1;   % Scale colours relative to 1 by subtracting 1 from the ratio then adding 1 to the colour bar labels
+            ratioColour         = true;
+
+        % Percent change in power relative to baseline
+        case 'percent'
+            eventRelatedSpectra = ( 10 .^ ( eventRelatedSpectra / 10 ) - 1 ) * 100;
+            percentColour       = true;
+
+    end
 end
-
-% Flip if needed
-if frequencies(1) > frequencies(end)
-    frequencies         = flip( frequencies );
-	eventRelatedSpectra = flip( eventRelatedSpectra, 1 );
-end
-
-% Base 2 logarithmic limits
-fmin = log2( frequencies(1)   );
-fmax = log2( frequencies(end) );
-
-% Octave space
-F = round( 2.^( linspace( fmin, fmax, vars.fticks ) ), 1 );
-
-% Any matching log base and exponent will give the same spacing except
-% for floating point errors
-% In R2022a logarithmic spaces for bases 2 vs. e vs. 10 are identical
-% to 1e-13 and nearly identical to 1e-14
-
-% Rounding resolution
-df0 = find( ~diff( F ), 1 );
-if ~isempty( df0 )
-    F = round( 2.^( linspace( fmin, fmax, vars.fticks ) ), 2 );
-end
-
-% Frequencies
-vars.Y = F;
 
 
 % Colour scale
 % -------------------------------------------------------------------------
 
-% Defaults: jetzeroed or bluewhitered or zero +/- abs max
+% Defaults: jetzeroed, colourszeroed, bluewhitered, or zero +/- abs max
 if isfield( vars, 'colourscale' )
-    colourscale = vars.colourscale;
+    colourScale = vars.colourscale;
 else
     if exist( 'jetzeroed.m',     'file' ) || ...
        exist( 'colourszeroed.m', 'file' ) || ...
        exist( 'bluewhitered.m',  'file' )
-        colourscale = [];
+        colourScale = [];
     else
-        colourscale = '0';
+        colourScale = '0';
     end
 end
 
 % Fixed zero colour
-if ~isempty( colourscale ) && ischar( colourscale )
+if ~isempty( colourScale ) && ischar( colourScale )
 
-    datamax = max( eventRelatedSpectra, [], 'all', 'omitnan' );
-    datamin = min( eventRelatedSpectra, [], 'all', 'omitnan' );
+    dataMax = max( eventRelatedSpectra, [], 'all', 'omitnan' );
+    dataMin = min( eventRelatedSpectra, [], 'all', 'omitnan' );
 
-    switch colourscale
+    switch colourScale
 
         % Zero positioned depending on the sign of the data
         case { 'abs' '0' }
 
             % All positive -> min always 0
-            if datamin > 0
-                colourscale = [ 0 datamax ];
+            if dataMin > 0
+                colourScale = [ 0 dataMax ];
 
             % All negative -> max always 0
-            elseif datamax < 0
-                colourscale = [ datamin 0 ];
+            elseif dataMax < 0
+                colourScale = [ dataMin 0 ];
 
             % Positive & negative -> centre always zero
             else
-                absolutemax = max( abs( eventRelatedSpectra ), [], 'all', 'omitnan' );
-                colourscale = [ -absolutemax absolutemax ];
+                absoluteMax = max( abs( eventRelatedSpectra ), [], 'all', 'omitnan' );
+                colourScale = [ -absoluteMax absoluteMax ];
 
             end
 
         % Zero minimum for positive data
         case '0+'
-            colourscale = [ 0 datamax ];
+            colourScale = [ 0 dataMax ];
 
         % Zero maximum for negative data
         case '0-'
-            colourscale = [ datamin 0 ];
+            colourScale = [ dataMin 0 ];
 
         % Zero centred for positive & negative data
         case '0='
-            absolutemax = max( abs( eventRelatedSpectra ), [], 'all', 'omitnan' );
-            colourscale = [ -absolutemax absolutemax ];
+            absoluteMax = max( abs( eventRelatedSpectra ), [], 'all', 'omitnan' );
+            colourScale = [ -absoluteMax absoluteMax ];
 
     end
 
@@ -205,15 +192,12 @@ end
 % Plot
 % -------------------------------------------------------------------------
 
-% Set up pixel data
-C = { 'XData' vars.X 'YData' vars.Y 'CData' eventRelatedSpectra };
-
 % Draw pixel image
 fig = figure;
-if isempty( colourscale )
-    imagesc( C{:} )
+if isempty( colourScale )
+    imagesc( times, frequencies, eventRelatedSpectra )
 else
-    imagesc( C{:}, colourscale )
+    imagesc( times, frequencies, eventRelatedSpectra, colourScale )
 end
 
 % Colour bar
@@ -233,6 +217,22 @@ else
 end
 if exist('location','var')
     colorbar( gca, location )
+end
+
+% Colour bar labels for power ratio relative to baseline
+if ratioColour
+    cb = colorbar;
+    for c = 1:length( cb.TickLabels )
+        cb.TickLabels{c} = string( str2double( cb.TickLabels{c} ) + 1 );    % Add 1 to correct for earlier subtraction
+    end
+end
+
+% Colour bar labels for percent change in power relative to baseline
+if percentColour
+    cb = colorbar;
+    for c = 1:length( cb.TickLabels )
+        cb.TickLabels{c} = [ cb.TickLabels{c} '%' ];
+    end
 end
 
 % Colour map
@@ -261,24 +261,38 @@ set( gcf, 'color', 'w' );
 % Axes
 % -------------------------------------------------------------------------
 
-% Logarithmic scale
-set( gca, 'YScale', vars.YS )
-
-% Values
 xticklabels( 'auto' )
 yticklabels( 'auto' )
-ax       = gca;
-ax.XTick = vars.X;
-ax.YTick = vars.Y;
-xticks( 'auto' )
 
-% Limits
-xlim( [ vars.X(1) vars.X(end) ] )
-ylim( [ vars.Y(1) vars.Y(end) ] )
+ax = gca;
+
+% Frequency spacing
+if std( diff( frequencies ) ) < 1e-12
+    frequencySpacing = 'linear';
+else
+    frequencySpacing = 'log';
+end
+ax.YScale = frequencySpacing;
+
+% Frequencies increasing from the origin
+ax.YDir = 'normal';
+
+% Logarithmically spaced frequency labels
+if strcmp( frequencySpacing, 'log' )
+    fMin            = frequencies(1);
+    fMax            = frequencies(end);
+    nOctaves        = log2( fMax / fMin );
+    nTicks          = floor( 3 * nOctaves );
+    fTicks          = 2 .^ ( linspace( log2( fMin ), log2( fMax ), nTicks ) );
+    fTicks(2:end-1) = round( fTicks(2:end-1), 0 );  % Round the middle ticks
+    fTicks          = unique( fTicks );             % Keep unique ticks after rounding
+    ax.YTick        = fTicks;                       % Set frequency ticks
+    ylim( [ fMin fMax ] )                           % Remove white space
+end
 
 % Labels
-xlabel( vars.XL )
-ylabel( vars.YL )
+xlabel( 'Time (ms)'      )
+ylabel( 'Frequency (Hz)' )
 
 
 % _________________________________________________________________________
@@ -300,6 +314,13 @@ for i = 1:2:length( varargin )-1
     varvalue = varargin{i+1};
 
     switch varname
+
+        case varoptions.cv
+            if ischar( varvalue )
+                vars.colourvalue = varvalue;
+            else
+                error( varoops.cv )
+            end
 
         case varoptions.cs
             if isvector( varvalue ) || ischar( varvalue ) || isempty( varvalue )
@@ -323,13 +344,6 @@ for i = 1:2:length( varargin )-1
                 error( varoops.cm )
             end
 
-        case varoptions.ft
-            if isscalar( varvalue ) && isnumeric( varvalue )
-                vars.fticks = varvalue;
-            else
-                error( varoops.ft )
-            end
-
     end
 
 end
@@ -347,28 +361,28 @@ end
 function [ varoptions, varoops ] = plotTFcases
 
 % Named variable input cases
-varoptions.cs = {'colourscale' 'colorscale' 'colour scale' 'color scale' ...
-                 'ColourScale' 'ColorScale' 'Colour Scale' 'Color Scale' ...
-                 'cs' 'cscale' 'CS' 'CScale'};
-varoptions.cb = {'cbar' 'colourbar' 'colorbar' 'colour bar' 'color bar' ...
-                 'CBar' 'ColourBar' 'ColorBar' 'Colour Bar' 'Color Bar' ...
-                 'cb' 'CB'};
-varoptions.cm = {'cm' 'cmap' 'colour' 'color' 'colours' 'colors' ...
-                 'colourmap' 'colormap' 'colour map' 'color map' ...
-                 'CM' 'CMap' 'Colour' 'Color' 'Colours' 'Colors' ...
-                 'ColourMap' 'ColorMap' 'Colour Map' 'Color Map'};
-varoptions.ft = {'ft' 'ftick' 'fticks' 'tick' 'ticks' 'f tick' 'f ticks' ...
-                 'FT' 'FTick' 'FTicks' 'Tick' 'Ticks' 'F tick' 'F ticks' ...
-                 'F Tick' 'F Ticks'};
+varoptions.cv = { 'colourvalue' 'colorvalue' 'colour value' 'color value' ...
+                  'ColourValue' 'ColorValue' 'Colour Value' 'Color Value' ...
+                  'cv' 'cvalue' 'CV' 'CValue'                             };
+varoptions.cs = { 'colourscale' 'colorscale' 'colour scale' 'color scale' ...
+                  'ColourScale' 'ColorScale' 'Colour Scale' 'Color Scale' ...
+                  'cs' 'cscale' 'CS' 'CScale'                             };
+varoptions.cb = { 'cbar' 'colourbar' 'colorbar' 'colour bar' 'color bar' ...
+                  'CBar' 'ColourBar' 'ColorBar' 'Colour Bar' 'Color Bar' ...
+                  'cb' 'CB'                                              };
+varoptions.cm = { 'cm' 'cmap' 'colour' 'color' 'colours' 'colors' ...
+                  'colourmap' 'colormap' 'colour map' 'color map' ...
+                  'CM' 'CMap' 'Colour' 'Color' 'Colours' 'Colors' ...
+                  'ColourMap' 'ColorMap' 'Colour Map' 'Color Map' };
 
 % Error messages for each case
+varoops.cv = "Specify colour values as 'exact', 'ratio', or 'percent'";
 varoops.cs = "Specify colour scaling according to the position of " + ...
              "zero as '0+' '0-' or '0=', or as a [z1 z2] range";
 varoops.cb = "Specify the location to draw the colour bar as 'L', " + ...
              "'R', 'T', or 'B'";
-varoops.cm = ['Specify the colour map as a named pre-set or as ', ...
-              'a matrix of gradients x RGB'];
-varoops.ft = 'Specify the number of frequencies to display on the y-axis';
+varoops.cm = "Specify the colour map as a named pre-set or as " + ...
+             "a matrix of gradients x RGB";
 
 
 % _________________________________________________________________________
