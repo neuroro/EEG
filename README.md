@@ -1,4 +1,4 @@
-# EEG
+# EEG Analysis Tools
 
 EEG analysis in terms of event-related spectra and multi-scale entropy
 
